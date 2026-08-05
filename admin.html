@@ -23,8 +23,8 @@
   <div id="gate" class="gate">
     <h2>Commissioner Login</h2>
     <p style="color:var(--text-dim);font-size:0.85rem;">
-      This is a light deterrent, not real security — the real access control is the GitHub token below,
-      which only your commissioner(s) should have.
+      This password is checked server-side on every write (Yahoo sync, pick entry, draft order) —
+      it's real access control now, not just a UI gate.
     </p>
     <input id="gate-password" type="password" placeholder="Admin password" />
     <button class="btn" onclick="checkPassword()">Enter</button>
@@ -35,37 +35,39 @@
     <div class="page-header">
       <div>
         <h1>Commissioner Admin</h1>
-        <p>Set the draft order, then record picks live. Every save is a commit to the site's GitHub repo.</p>
+        <p>Connect Yahoo (optional but recommended), set the draft order, and manage picks.</p>
       </div>
     </div>
 
     <section class="rules-section">
-      <h2>1. GitHub Access Token</h2>
+      <h2>1. Yahoo Sync</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">
-        Create a <strong>fine-grained personal access token</strong> scoped to just this repo with
-        "Contents: Read and write" permission (GitHub → Settings → Developer settings → Fine-grained tokens).
-        It's stored only in this browser's local storage, never in the site's source.
+        If your league drafts inside Yahoo, connect it once and picks sync automatically — no manual
+        transcription, no typos. Requires <code>YAHOO_CLIENT_ID</code>, <code>YAHOO_CLIENT_SECRET</code>,
+        <code>YAHOO_REDIRECT_URI</code>, and <code>YAHOO_LEAGUE_KEY</code> set in Vercel (see README.md).
       </p>
       <div class="full-row">
-        <div style="flex:1;">
-          <label>GitHub Token</label>
-          <input id="gh-token" type="password" placeholder="github_pat_..." />
-        </div>
-        <button class="btn secondary" onclick="saveToken()">Save Token</button>
+        <a class="btn secondary" href="/api/yahoo/login">Connect Yahoo Account</a>
+        <button class="btn" onclick="syncNow()">Sync Now</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-dim);">
+          <input type="checkbox" id="live-sync-toggle" onchange="toggleLiveSync()" />
+          Live sync every 20s (leave this tab open on draft day)
+        </label>
       </div>
-      <p id="token-status" class="status-msg"></p>
+      <p id="yahoo-status" class="status-msg"></p>
     </section>
 
     <section class="rules-section">
       <h2>2. Draft Order Setup</h2>
-      <p style="color:var(--text-dim);font-size:0.88rem;">Draft order is drawn from a hat each year — enter this year's owner per slot before the draft starts.</p>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Draft order is drawn from a hat each year. Yahoo sync backfills this automatically from round 1 — or set it by hand below before the draft starts.</p>
       <div id="team-inputs" class="card-grid"></div>
       <button class="btn secondary" style="margin-top:10px;" onclick="saveDraftOrder()">Save Draft Order</button>
       <p id="order-status" class="status-msg"></p>
     </section>
 
     <section class="rules-section">
-      <h2>3. Record a Pick</h2>
+      <h2>3. Record a Pick Manually</h2>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.</p>
       <form class="pick-form" onsubmit="return false;">
         <div>
           <label>Round</label>
@@ -104,58 +106,64 @@
 
 <footer class="site-footer">Commissioner tools — not indexed, not linked from the public nav.</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/config.js"></script>
 <script src="js/history.js"></script>
 <script src="js/draftboard.js"></script>
-<script src="js/github-write.js"></script>
+<script src="js/supabase-client.js"></script>
 <script>
-  // Cosmetic gate only. Change this before your draft — it is NOT a
-  // real access control (see note on the page). Real protection = the
-  // GitHub token, which should only be shared with trusted commissioners.
-  const ADMIN_PASSWORD = "hmc-commish";
-
+  // Cosmetic-looking, but real: this password is sent as x-admin-password
+  // on every write call and checked server-side against the ADMIN_PASSWORD
+  // env var (lib/auth.js). Only the local UI-unlock check below is
+  // client-side; nothing gets written without the server agreeing too.
   function checkPassword() {
     const val = document.getElementById("gate-password").value;
-    if (val === ADMIN_PASSWORD) {
-      document.getElementById("gate").style.display = "none";
-      document.getElementById("admin-content").style.display = "block";
-      initAdmin();
-    } else {
-      document.getElementById("gate-error").textContent = "Wrong password.";
-    }
+    localStorage.setItem("hmc_admin_password", val);
+    document.getElementById("gate").style.display = "none";
+    document.getElementById("admin-content").style.display = "block";
+    initAdmin();
   }
 
-  function saveToken() {
-    const t = document.getElementById("gh-token").value.trim();
-    if (!t) return;
-    localStorage.setItem("hmc_gh_token", t);
-    document.getElementById("token-status").textContent = "Token saved in this browser.";
-    document.getElementById("token-status").className = "status-msg ok";
-  }
-
+  let sb = null;
   let currentConfig = null;
   let currentPicks = null;
+  let liveSyncTimer = null;
 
   async function initAdmin() {
-    if (ghToken()) document.getElementById("gh-token").value = "••••••••••••";
+    sb = getSupabaseClient();
+    if (new URLSearchParams(location.search).get("yahoo") === "connected") {
+      document.getElementById("yahoo-status").textContent = "Yahoo account connected.";
+      document.getElementById("yahoo-status").className = "status-msg ok";
+    }
+    if (!sb) {
+      document.getElementById("board").innerHTML = `<p style="color:var(--text-dim);">
+        Not connected to Supabase yet — set SUPABASE_URL / SUPABASE_ANON_KEY in js/config.js.</p>`;
+      return;
+    }
     await loadAll();
+    sb.channel("admin-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "draft_picks" }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "draft_config" }, () => loadAll())
+      .subscribe();
   }
 
   async function loadAll() {
-    const [cfgFile, picksFile] = await Promise.all([
-      fetch("data/draft-config.json?" + Date.now()).then((r) => r.json()),
-      fetch("data/draft-picks.json?" + Date.now()).then((r) => r.json())
+    const [{ data: cfgRows }, { data: picks }] = await Promise.all([
+      sb.from("draft_config").select("*").eq("id", 1).limit(1),
+      sb.from("draft_picks").select("*").order("overall_pick")
     ]);
-    currentConfig = cfgFile;
-    currentPicks = picksFile;
-    renderTeamInputs();
+    currentConfig = { rounds: cfgRows[0].rounds, teams: cfgRows[0].teams };
+    currentPicks = picks;
+    // Skip re-rendering the team-order inputs while someone's actively
+    // typing in one (a realtime event mid-edit would otherwise wipe it).
+    const teamInputsEl = document.getElementById("team-inputs");
+    if (!teamInputsEl.contains(document.activeElement)) renderTeamInputs();
     renderSlotSelect();
     renderBoard("board", currentConfig, currentPicks);
   }
 
   function renderTeamInputs() {
-    const el = document.getElementById("team-inputs");
-    el.innerHTML = currentConfig.teams
+    document.getElementById("team-inputs").innerHTML = currentConfig.teams
       .map(
         (t) => `<div class="card" style="padding:12px;">
           <label>Slot ${t.slot}</label>
@@ -166,26 +174,43 @@
   }
 
   function renderSlotSelect() {
-    const sel = document.getElementById("pick-slot");
-    sel.innerHTML = currentConfig.teams
+    document.getElementById("pick-slot").innerHTML = currentConfig.teams
       .map((t) => `<option value="${t.slot}">${escapeHtml(t.owner)} (slot ${t.slot})</option>`)
       .join("");
+  }
+
+  async function syncNow() {
+    const status = document.getElementById("yahoo-status");
+    status.textContent = "Syncing…";
+    status.className = "status-msg";
+    try {
+      const result = await callAdminApi("/api/yahoo/sync", {});
+      status.textContent = result.message || `Synced ${result.synced} pick(s) from Yahoo.`;
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    }
+  }
+
+  function toggleLiveSync() {
+    const on = document.getElementById("live-sync-toggle").checked;
+    if (on) {
+      syncNow();
+      liveSyncTimer = setInterval(syncNow, 20000);
+    } else if (liveSyncTimer) {
+      clearInterval(liveSyncTimer);
+      liveSyncTimer = null;
+    }
   }
 
   async function saveDraftOrder() {
     const status = document.getElementById("order-status");
     try {
       const inputs = document.querySelectorAll(".team-owner-input");
-      const newTeams = Array.from(inputs).map((inp) => ({
-        slot: Number(inp.dataset.slot),
-        owner: inp.value.trim() || "TBD"
-      }));
-      const updated = { ...currentConfig, teams: newTeams };
-      await ghPutFile("data/draft-config.json", updated, `Set draft order for ${updated.season}`);
-      currentConfig = updated;
-      renderSlotSelect();
-      renderBoard("board", currentConfig, currentPicks);
-      status.textContent = "Draft order saved and committed.";
+      const teams = Array.from(inputs).map((inp) => ({ slot: Number(inp.dataset.slot), owner: inp.value.trim() || "TBD" }));
+      await callAdminApi("/api/draft-config/save", { teams });
+      status.textContent = "Draft order saved.";
       status.className = "status-msg ok";
     } catch (e) {
       status.textContent = "Error: " + e.message;
@@ -206,29 +231,14 @@
         status.className = "status-msg err";
         return;
       }
-      const numTeams = currentConfig.teams.length;
-      const overallPick = overallPickForRoundSlot(round, slot, numTeams);
-      const teamOwner = currentConfig.teams.find((t) => t.slot === slot)?.owner || `Slot ${slot}`;
-
-      const picks = (currentPicks.picks || []).filter((p) => p.overallPick !== overallPick);
-      picks.push({
-        overallPick, round, slot, team: teamOwner, player, position, nflTeam,
-        enteredAt: new Date().toISOString()
+      const team = currentConfig.teams.find((t) => t.slot === slot)?.owner || `Slot ${slot}`;
+      const result = await callAdminApi("/api/picks/add", {
+        round, slot, player, position, nflTeam, team, numTeams: currentConfig.teams.length
       });
-      picks.sort((a, b) => a.overallPick - b.overallPick);
-
-      const updated = { picks };
-      await ghPutFile(
-        "data/draft-picks.json",
-        updated,
-        `Pick #${overallPick}: ${teamOwner} selects ${player} (Round ${round})`
-      );
-      currentPicks = updated;
-      renderBoard("board", currentConfig, currentPicks);
       document.getElementById("pick-player").value = "";
       document.getElementById("pick-position").value = "";
       document.getElementById("pick-nflteam").value = "";
-      status.textContent = `Saved pick #${overallPick}.`;
+      status.textContent = `Saved pick #${result.overallPick}.`;
       status.className = "status-msg ok";
     } catch (e) {
       status.textContent = "Error: " + e.message;
@@ -239,18 +249,8 @@
   async function undoLastPick() {
     const status = document.getElementById("pick-status");
     try {
-      const picks = (currentPicks.picks || []).slice();
-      if (picks.length === 0) return;
-      const removed = picks.pop();
-      const updated = { picks };
-      await ghPutFile(
-        "data/draft-picks.json",
-        updated,
-        `Undo pick #${removed.overallPick}: ${removed.team} - ${removed.player}`
-      );
-      currentPicks = updated;
-      renderBoard("board", currentConfig, currentPicks);
-      status.textContent = `Removed pick #${removed.overallPick}.`;
+      const result = await callAdminApi("/api/picks/undo", {});
+      status.textContent = result.removed ? `Removed pick #${result.removed.overall_pick}.` : "No picks to remove.";
       status.className = "status-msg ok";
     } catch (e) {
       status.textContent = "Error: " + e.message;

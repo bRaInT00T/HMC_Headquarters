@@ -35,55 +35,83 @@
   </div>
 
   <div class="note-box">
-    This board refreshes automatically every 15 seconds. Picks are entered by the commissioner on the
-    <a href="admin.html">admin page</a> and committed straight to this site's repo, so every pick is also part of
-    the site's version history.
+    This board updates instantly — no need to refresh. It's subscribed live to the same database the
+    commissioner's <a href="admin.html">admin page</a> (and Yahoo sync) write picks into.
   </div>
 </main>
 
 <footer class="site-footer">The Handsome Men's Club Fantasy Football League</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/config.js"></script>
 <script src="js/history.js"></script>
 <script src="js/draftboard.js"></script>
+<script src="js/supabase-client.js"></script>
 <script>
+  let sb = null;
   let config = null;
 
-  async function refresh() {
-    try {
-      const [cfgRes, picksRes] = await Promise.all([
-        fetch("data/draft-config.json?" + Date.now()),
-        fetch("data/draft-picks.json?" + Date.now())
-      ]);
-      config = await cfgRes.json();
-      const picksData = await picksRes.json();
+  function toBoardConfig(row) {
+    return { rounds: row.rounds, teams: row.teams };
+  }
 
-      document.getElementById("draft-meta").innerHTML = `
-        <div><strong>Season</strong><br>${escapeHtml(config.season)}</div>
-        <div><strong>Draft Date</strong><br>${escapeHtml(config.draftDate)}</div>
-        <div><strong>Format</strong><br>${escapeHtml(config.format)} · ${config.rounds} rounds</div>
-      `;
-
-      renderBoard("board", config, picksData, {
-        onRendered: ({ picksMade, totalPicks, onClock }) => {
-          const status = document.getElementById("board-status");
-          if (picksMade >= totalPicks) {
-            status.textContent = "Draft complete.";
-          } else if (picksMade === 0) {
-            status.textContent = "Draft hasn't started yet — check back once it's underway.";
-          } else {
-            const teamName = onClock ? config.teams[onClock.slot - 1].owner : "";
-            status.textContent = `Pick ${picksMade + 1} of ${totalPicks} — on the clock: ${teamName} (Round ${onClock.round})`;
-          }
-        }
-      });
-    } catch (e) {
-      document.getElementById("board").textContent = "Couldn't load the draft board: " + e.message;
+  function updateStatus(picksMade, totalPicks, onClock, teams) {
+    const status = document.getElementById("board-status");
+    if (picksMade >= totalPicks) {
+      status.textContent = "Draft complete.";
+    } else if (picksMade === 0) {
+      status.textContent = "Draft hasn't started yet — check back once it's underway.";
+    } else {
+      const teamName = onClock ? teams[onClock.slot - 1].owner : "";
+      status.textContent = `Pick ${picksMade + 1} of ${totalPicks} — on the clock: ${teamName} (Round ${onClock.round})`;
     }
   }
 
-  refresh();
-  setInterval(refresh, 15000);
+  async function loadAndRender() {
+    const [{ data: cfgRows, error: cfgErr }, { data: picks, error: pickErr }] = await Promise.all([
+      sb.from("draft_config").select("*").eq("id", 1).limit(1),
+      sb.from("draft_picks").select("*").order("overall_pick")
+    ]);
+    if (cfgErr) throw cfgErr;
+    if (pickErr) throw pickErr;
+
+    const row = cfgRows[0];
+    config = toBoardConfig(row);
+
+    document.getElementById("draft-meta").innerHTML = `
+      <div><strong>Season</strong><br>${escapeHtml(row.season)}</div>
+      <div><strong>Draft Date</strong><br>${escapeHtml(row.draft_date)}</div>
+      <div><strong>Format</strong><br>${escapeHtml(row.format)} · ${row.rounds} rounds</div>
+    `;
+
+    renderBoard("board", config, picks, {
+      onRendered: ({ picksMade, totalPicks, onClock }) => updateStatus(picksMade, totalPicks, onClock, config.teams)
+    });
+  }
+
+  async function init() {
+    sb = getSupabaseClient();
+    if (!sb) {
+      document.getElementById("board").innerHTML = `<p style="padding:16px;color:var(--text-dim);">
+        This board isn't connected to its database yet. Set SUPABASE_URL / SUPABASE_ANON_KEY in
+        <code>js/config.js</code> (see README.md).
+      </p>`;
+      return;
+    }
+    try {
+      await loadAndRender();
+    } catch (e) {
+      document.getElementById("board").textContent = "Couldn't load the draft board: " + e.message;
+      return;
+    }
+
+    sb.channel("draft-board-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "draft_picks" }, () => loadAndRender())
+      .on("postgres_changes", { event: "*", schema: "public", table: "draft_config" }, () => loadAndRender())
+      .subscribe();
+  }
+
+  init();
 </script>
 </body>
 </html>

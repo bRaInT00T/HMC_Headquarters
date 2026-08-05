@@ -1,5 +1,6 @@
 // Shared snake-draft math + board rendering used by draft.html (public,
-// read-only) and admin.html (entry form + live preview).
+// realtime read-only) and admin.html (entry form + live preview).
+// Field names match the Supabase draft_picks table (snake_case) directly.
 
 function slotForOverallPick(overallPick, numTeams) {
   const round = Math.ceil(overallPick / numTeams);
@@ -13,21 +14,23 @@ function overallPickForRoundSlot(round, slot, numTeams) {
   return (round - 1) * numTeams + posInRound;
 }
 
-function renderBoard(containerId, config, picksData, opts = {}) {
+// config: { rounds, teams: [{slot, owner}, ...] }
+// picks: array of rows from the draft_picks table (overall_pick, round, slot, team, player, position, nfl_team)
+function renderBoard(containerId, config, picks, opts = {}) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
   const numTeams = config.teams.length;
   const rounds = config.rounds;
-  const picks = picksData.picks || [];
   const pickByOverall = {};
-  picks.forEach((p) => {
-    if (p.overallPick) pickByOverall[p.overallPick] = p;
-    else pickByOverall[overallPickForRoundSlot(p.round, p.slot, numTeams)] = p;
+  (picks || []).forEach((p) => {
+    pickByOverall[p.overall_pick] = p;
   });
 
-  const nextOverall = picks.length + 1;
-  const onClock = nextOverall <= numTeams * rounds ? slotForOverallPick(nextOverall, numTeams) : null;
+  const picksMade = (picks || []).length;
+  const nextOverall = picksMade + 1;
+  const totalPicks = numTeams * rounds;
+  const onClock = nextOverall <= totalPicks ? slotForOverallPick(nextOverall, numTeams) : null;
 
   let html = `<table class="board"><thead><tr><th>Rd</th>`;
   config.teams.forEach((t) => {
@@ -44,8 +47,8 @@ function renderBoard(containerId, config, picksData, opts = {}) {
       if (pick) {
         html += `<td class="pick-cell filled">
           <div class="player">${escapeHtml(pick.player || "")}</div>
-          <div class="meta">${escapeHtml(pick.position || "")}${pick.nflTeam ? " - " + escapeHtml(pick.nflTeam) : ""}</div>
-          <div class="meta">Pick #${overall}</div>
+          <div class="meta">${escapeHtml(pick.position || "")}${pick.nfl_team ? " - " + escapeHtml(pick.nfl_team) : ""}</div>
+          <div class="meta">Pick #${overall}${pick.source === "yahoo" ? " · synced" : ""}</div>
         </td>`;
       } else {
         html += `<td class="pick-cell${isOnClock ? " on-clock" : ""}">
@@ -58,5 +61,5 @@ function renderBoard(containerId, config, picksData, opts = {}) {
   html += `</tbody></table>`;
   el.innerHTML = html;
 
-  if (opts.onRendered) opts.onRendered({ nextOverall, onClock, totalPicks: numTeams * rounds, picksMade: picks.length });
+  if (opts.onRendered) opts.onRendered({ nextOverall, onClock, totalPicks, picksMade });
 }
