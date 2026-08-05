@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rules — HMC Fantasy Football</title>
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <span class="mark">🏈 The Handsome Men's Club</span>
+    <span class="sub">Fantasy Football League</span>
+  </div>
+  <nav class="site-nav">
+    <a href="index.html">Home</a>
+    <a href="rules.html" class="active">Rules</a>
+    <a href="settings.html">Settings</a>
+    <a href="draft.html">Draft Board</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-header">
+    <div>
+      <h1 id="doc-title">League Rules</h1>
+      <p id="doc-updated"></p>
+    </div>
+    <div class="history-panel">
+      <h3>Version History</h3>
+      <div id="rules-history">Loading…</div>
+    </div>
+  </div>
+
+  <div id="rules-sections">Loading rules…</div>
+
+  <div class="note-box" id="rules-notes"></div>
+</main>
+
+<footer class="site-footer">
+  Rules are edited directly in <code>data/rules.json</code> in the site's GitHub repo — every commit shows up in
+  the Version History panel above with who changed it, when, and what changed.
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/history.js"></script>
+<script>
+  async function loadRules() {
+    const res = await fetch("data/rules.json?" + Date.now());
+    const data = await res.json();
+
+    document.getElementById("doc-title").textContent = `${data.leagueName} — ${data.documentTitle}`;
+    document.getElementById("doc-updated").textContent = `Last updated ${data.lastUpdated}`;
+
+    const container = document.getElementById("rules-sections");
+    container.innerHTML = data.sections
+      .map(
+        (s) => `<section class="rules-section">
+          <h2>${escapeHtml(s.title)}</h2>
+          <ul>${s.items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>
+        </section>`
+      )
+      .join("");
+
+    if (data.notes && data.notes.length) {
+      document.getElementById("rules-notes").innerHTML =
+        "<strong>Notes:</strong><br>" + data.notes.map(escapeHtml).join("<br>");
+    }
+
+    renderHistory("rules-history", "data/rules.json");
+  }
+  loadRules().catch((e) => {
+    document.getElementById("rules-sections").textContent = "Couldn't load rules.json: " + e.message;
+  });
+</script>
+</body>
+</html>

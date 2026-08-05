@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Draft Board — HMC Fantasy Football</title>
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <span class="mark">🏈 The Handsome Men's Club</span>
+    <span class="sub">Fantasy Football League</span>
+  </div>
+  <nav class="site-nav">
+    <a href="index.html">Home</a>
+    <a href="rules.html">Rules</a>
+    <a href="settings.html">Settings</a>
+    <a href="draft.html" class="active">Draft Board</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-header">
+    <div>
+      <h1><span class="live-dot"></span>Live Draft Board</h1>
+      <p id="board-status">Loading…</p>
+    </div>
+  </div>
+
+  <div class="draft-meta" id="draft-meta"></div>
+
+  <div class="board-wrap">
+    <div id="board">Loading draft board…</div>
+  </div>
+
+  <div class="note-box">
+    This board refreshes automatically every 15 seconds. Picks are entered by the commissioner on the
+    <a href="admin.html">admin page</a> and committed straight to this site's repo, so every pick is also part of
+    the site's version history.
+  </div>
+</main>
+
+<footer class="site-footer">The Handsome Men's Club Fantasy Football League</footer>
+
+<script src="js/config.js"></script>
+<script src="js/history.js"></script>
+<script src="js/draftboard.js"></script>
+<script>
+  let config = null;
+
+  async function refresh() {
+    try {
+      const [cfgRes, picksRes] = await Promise.all([
+        fetch("data/draft-config.json?" + Date.now()),
+        fetch("data/draft-picks.json?" + Date.now())
+      ]);
+      config = await cfgRes.json();
+      const picksData = await picksRes.json();
+
+      document.getElementById("draft-meta").innerHTML = `
+        <div><strong>Season</strong><br>${escapeHtml(config.season)}</div>
+        <div><strong>Draft Date</strong><br>${escapeHtml(config.draftDate)}</div>
+        <div><strong>Format</strong><br>${escapeHtml(config.format)} · ${config.rounds} rounds</div>
+      `;
+
+      renderBoard("board", config, picksData, {
+        onRendered: ({ picksMade, totalPicks, onClock }) => {
+          const status = document.getElementById("board-status");
+          if (picksMade >= totalPicks) {
+            status.textContent = "Draft complete.";
+          } else if (picksMade === 0) {
+            status.textContent = "Draft hasn't started yet — check back once it's underway.";
+          } else {
+            const teamName = onClock ? config.teams[onClock.slot - 1].owner : "";
+            status.textContent = `Pick ${picksMade + 1} of ${totalPicks} — on the clock: ${teamName} (Round ${onClock.round})`;
+          }
+        }
+      });
+    } catch (e) {
+      document.getElementById("board").textContent = "Couldn't load the draft board: " + e.message;
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 15000);
+</script>
+</body>
+</html>

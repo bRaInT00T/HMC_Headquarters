@@ -1,0 +1,29 @@
+{
+  "season": "2026",
+  "leagueName": "The Handsome Men's Club (HMC)",
+  "draftDate": "TBD – fourth weekend of August (per league rules)",
+  "format": "Snake",
+  "rounds": 16,
+  "secondsPerPickRounds1to6": 120,
+  "secondsPerPickAfter": 60,
+  "orderNote": "Draft order is drawn fresh from a hat each year, except the consolation-bracket winner who chooses their position (1-12). Fill in `teams` below once the order is set — slot is the draft position 1-12.",
+  "teams": [
+    { "slot": 1, "owner": "TBD" },
+    { "slot": 2, "owner": "TBD" },
+    { "slot": 3, "owner": "TBD" },
+    { "slot": 4, "owner": "TBD" },
+    { "slot": 5, "owner": "TBD" },
+    { "slot": 6, "owner": "TBD" },
+    { "slot": 7, "owner": "TBD" },
+    { "slot": 8, "owner": "TBD" },
+    { "slot": 9, "owner": "TBD" },
+    { "slot": 10, "owner": "TBD" },
+    { "slot": 11, "owner": "TBD" },
+    { "slot": 12, "owner": "TBD" }
+  ],
+  "knownOwners": ["Shank", "Wolk", "Boris", "Joe", "Fred", "Hilt", "Bill", "Rob", "Gower", "Tony", "Ed", "Chris"],
+  "notes": [
+    "knownOwners is the 12-owner roster from last season's (v16) draft sheet, for reference when filling in this year's slot order.",
+    "Update `teams` (owner per slot 1-12) from the admin page or by editing this file directly before the live draft starts."
+  ]
+}

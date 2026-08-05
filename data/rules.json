@@ -1,0 +1,246 @@
+{
+  "leagueName": "The Handsome Men's Club (HMC)",
+  "documentTitle": "Fantasy Football Bible and Rule Book",
+  "lastUpdated": "2026-08-05",
+  "sections": [
+    {
+      "title": "Governance",
+      "items": [
+        "The initial rules (in 2026) will be reviewed by all league owners. Any rule is open for discussion and/or a vote, with the majority winning the vote. Rules will be discussed until a majority is determined.",
+        "Any rule changes in-season or for following seasons will be voted on by all league owners. 66% of the league owners must vote to change the original rule for a new rule to pass."
+      ]
+    },
+    {
+      "title": "Entry Fee",
+      "items": [
+        "The total entry fee is $200, which includes a $150 league fee and a $50 weekly winner fee."
+      ]
+    },
+    {
+      "title": "Payout",
+      "items": [
+        "1st Place $1,100 / 2nd Place $500 / 3rd Place $250",
+        "Weekly Points Winner: $25 for weeks 1-10 and $75 for weeks 11-14",
+        "Champion pays for their own name plate ($10)",
+        "Consolation bracket winner chooses their draft position spot (1-12)"
+      ]
+    },
+    {
+      "title": "Weekly Point Winner",
+      "items": [
+        "The weekly point leader will receive $25 for weeks 1-10 and $75 for weeks 11-14.",
+        "If there is a tie (highly unlikely with fractional points in place) then the top two teams will split the money.",
+        "All prize money will be distributed at the end of the season."
+      ]
+    },
+    {
+      "title": "League Loser",
+      "items": [
+        "The team that finishes 12th overall before the playoffs must host the following year's draft. If they cannot host at home, they must host at a restaurant, bar, or other venue of their choice.",
+        "If hosting at home, the loser is responsible for providing burgers, hot dogs, buns, or pizza, along with chips, condiments, plates, and cutlery.",
+        "If hosting at a venue, the loser must pay the tip for the entire bill.",
+        "League loser must also serve the previous year's champ (does not apply if champ is not present).",
+        "League loser is required to wear the \"I suck at Fantasy Football\" apron during the draft.",
+        "11th place loser is responsible for calling, texting, and/or keeping track of one remote drafter that cannot be on Zoom, the whole time (same applies to 10th, 9th, etc. depending on how many are remote)."
+      ]
+    },
+    {
+      "title": "Pre-Draft",
+      "items": [
+        "You cannot trade non-keeper players for draft picks.",
+        "Each team has 120 seconds per pick in the first 6 rounds, then 60 seconds per pick each round after.",
+        "If you do not make a pick within the allotted time, the next team can make their selection."
+      ]
+    },
+    {
+      "title": "Draft Order",
+      "items": [
+        "The winner of the consolation bracket gets to choose their draft position (1-12).",
+        "The remaining draft order will be determined each year by a fresh draw from a hat."
+      ]
+    },
+    {
+      "title": "Draft",
+      "items": [
+        "The draft will be held in person on the fourth weekend of August.",
+        "All rounds are snake draft style, i.e. 1-12, 12-1, 1-12, 12-1, etc."
+      ]
+    },
+    {
+      "title": "Draft Day Penalties",
+      "items": [
+        "Using the wrong color pen: 1st offense = chug a beer or take a shot. 2nd offense = chug a beer AND take a shot. 3rd offense = chug a beer or take a shot and one knife edge. 4th offense = chug a beer or take a shot and group knife edge.",
+        "Picking a player already taken: same escalation as above (1st = chug/shot, 2nd = chug AND shot, 3rd = chug/shot + one knife edge, 4th = chug/shot + group knife edge).",
+        "Using the wrong color pen AND picking a player already taken: same offenses are applied but doubled."
+      ]
+    },
+    {
+      "title": "Keepers",
+      "items": [
+        "Each team is allowed to keep up to two players per season.",
+        "A player can only be kept for a maximum of one consecutive season.",
+        "A keeper player will be assigned the same draft round they were originally drafted in during the previous season (including via trade, i.e. the \"Keeper Baggage\" rule).",
+        "Only players who started at least one game in the previous season are eligible to be a keeper.",
+        "Players who were picked up as Free Agents will count as 8th rounders.",
+        "If you keep 2 free agents they count as 7th and 8th round picks due to the \"Bump Up\" Rule.",
+        "You can only keep one player per draft round due to the \"Bump Up\" Rule, e.g. a team cannot keep both of its 1st rounders — it must choose between the two."
+      ]
+    },
+    {
+      "title": "Keeper Declaration",
+      "items": [
+        "The keeper declaration period will begin in August, following the first preseason game.",
+        "The team with the first overall draft pick will initiate the process, followed by teams in ascending draft order (1st, 2nd, 3rd, etc.).",
+        "Each team has a 12-hour window to submit their keeper selections after the previous team has made their declaration. If a team fails to declare within their 12-hour window, they forfeit their keeper selections for the season.",
+        "If a team declares their keepers before their 12-hour window expires, the clock for the next team in the sequence begins immediately upon submission.",
+        "Once all teams have submitted their selections, the keeper declaration period officially closes. No further keepers may be declared, and all other players remain in the draft pool for the upcoming season.",
+        "Once a keeper is declared, they cannot be dropped from the team's roster. Exceptions may be made in cases of a season-ending injury, suspension, etc. (see Injured/Suspension/Holdout Keepers below)."
+      ]
+    },
+    {
+      "title": "The Bump Up Rule",
+      "items": [
+        "You cannot keep more than one player who is assigned to the same draft round. If your keeper selections result in two players being assigned to the same draft round, the second player is \"bumped up\" to the preceding draft round. Example: Rob traded his 15th rounder to Boris and decided to keep two players (one a free agent pickup with ADP of 15th round and another he drafted via 15th round pick). Rob will draft those players in rounds 13 and 14."
+      ]
+    },
+    {
+      "title": "Trading Potential Keepers (\"Keeper Baggage\")",
+      "items": [
+        "If an owner trades a player that was previously kept by the previous owner, then that \"keeper baggage\" transfers with that player to the new team. If that player is then kept by the new team their draft round is based on the previous owner's draft. Example: Hilt trades his 3rd round keeper Alshon Jeffery to Fred for 5th round Sammy Watkins. Fred cannot keep Alshon Jeffery since Hilt already kept him (max 1 year). If Hilt chooses, he can keep Sammy Watkins for the upcoming draft as a 5th rounder."
+      ]
+    },
+    {
+      "title": "Trading a Draft Pick and Keeping a Player With That Same Round Value",
+      "items": [
+        "If you trade a draft pick (e.g. 5th round pick) and want to keep a player designated as your 5th round pick, that player gets bumped up 1 round as a penalty. That player is then designated as your 4th round pick. If you have another keeper with that 4th round status you must choose one or the other (can't keep both in the same round)."
+      ]
+    },
+    {
+      "title": "Shank Rule",
+      "items": [
+        "1st overall pick cannot drop a potential keeper and pick them up as the 1st overall pick, e.g. Julio Jones in 2017."
+      ]
+    },
+    {
+      "title": "Injured Keepers",
+      "items": [
+        "If you pick a keeper and he gets injured for 6 or more weeks (before the draft) you can drop that player in exchange for that coinciding round pick. A decision must be made up to 1 week before draft day. Example: Boris kept Tom Brady as his 3rd rounder, he gets injured; after selecting him, Boris can drop him up to 1 week before draft day in exchange for his original 3rd round pick."
+      ]
+    },
+    {
+      "title": "Contagious Disease Keepers",
+      "items": [
+        "If you pick a keeper and he sits out due to a contagious disease (before the draft) you can drop that player in exchange for that coinciding round pick. A decision must be made within 1 week of when the news breaks."
+      ]
+    },
+    {
+      "title": "Suspension Keepers",
+      "items": [
+        "If you pick a keeper and that keeper gets suspended for 6 or more weeks (before the draft) you can drop that player in exchange for that coinciding round pick. Due to appeals, a decision can be made up to 1 week before draft day. Example: Joe kept Ezekiel Elliott as his 1st round pick, he gets suspended; after selecting him, Joe can drop him in exchange for his original 1st round pick up to 1 week before the draft."
+      ]
+    },
+    {
+      "title": "Miscellaneous Holdout Keepers",
+      "items": [
+        "If you pick a keeper and that keeper decides to hold out and not play (before the draft) you can drop that player in exchange for that coinciding round pick. A decision must be made up to 1 week before draft day. Example: Joe kept Antonio Brown as his 1st round pick, he held out due to helmet issues; after selecting him, Joe can drop him up to 1 week before draft day in exchange for his original 1st round pick."
+      ]
+    },
+    {
+      "title": "Modification of Keeper Rules 1 Week Prior to Draft Day",
+      "items": [
+        "In the event of an unforeseen issue, the league can temporarily modify a keeper rule so that no team goes into a draft with a disadvantage. Example: if a kept player suffers a severe unforeseen incident 1 week prior to opening day, the team that kept him should not be required to keep him just because there was no rule for it. The player can be dropped in exchange for the coinciding round pick."
+      ]
+    },
+    {
+      "title": "Trades",
+      "items": [
+        "The commissioner oversees vetoing trades, not the league.",
+        "If the commissioner does not view a trade as \"fair\" he will open it for a league vote on Discord. A trade requires a veto vote from 6 of the 10 non-involved owners to be officially rejected.",
+        "The commissioner will not share any details of a proposed trade with the league until it has been officially accepted by both parties. This ensures confidentiality.",
+        "In terms of trades, \"fair\" is defined as whether owners are working together to stack one team, i.e. collusion. If you feel that one team is getting the better end of a trade, that is not a reason to veto a trade."
+      ]
+    },
+    {
+      "title": "Trading Players for Picks",
+      "items": [
+        "This is allowed DURING the season only, including after all keeper announcements have been made. The Commissioner will review all trades (see Trades above). You can trade players on your roster for any package of picks for next season's draft.",
+        "Yahoo will keep track of all trades for next year. If you trade a draft pick, you will not have that pick in the following year's draft, and the team you traded with will receive an additional pick in that round.",
+        "Unless you keep that player as a keeper, the player goes back into the pool. You are only allowed 15 picks per draft, so if you trade for multiple draft picks for next year you only keep the first 15 picks. Example: trade a player for a 3rd and 4th round pick; next year you have two round 3 picks and two round 4 picks, so your round 14 and round 15 picks are void."
+      ]
+    },
+    {
+      "title": "Firesale Trades",
+      "items": [
+        "Each team is only permitted to trade for and trade away one draft pick in Rounds 1-3 per season.",
+        "Each team is only permitted to trade for and trade away one draft pick in Rounds 4-7 per season.",
+        "Each team is only permitted to trade for and trade away one draft pick in Rounds 8-15 per season."
+      ]
+    },
+    {
+      "title": "Free Agent Pickups",
+      "items": [
+        "There is no limit to the number of free agents a team can acquire during the season.",
+        "Follow the waiver rules below.",
+        "Free agent bidding style: $100 for the year, silent auction style, highest bidder gets the player, tie goes by waiver wire. Once you reach $0, you cannot get any more money.",
+        "The bidding window opens after the last game of the week and lasts for two full days.",
+        "If you win the auction for a player, that player is added to your roster and the bid money is deducted from your budget. If you lose, your budget is not reduced.",
+        "You may place a bid of $0 for a player. If no other bids are submitted, you acquire the player for free.",
+        "Managers may bid on more than one player in a single auction period and will be asked to apply a prioritization to each bid.",
+        "If there is a tie in bid amounts for a player (with the same prioritization number), the free agent claim is based on reverse order of standings. Each successful claim moves a team to the end of the waiver priority list."
+      ]
+    },
+    {
+      "title": "Waivers",
+      "items": [
+        "Waivers start at game time of each game and last till Tuesday night at midnight. After that time all other free agents are available immediately.",
+        "When a manager drops a player, that player is placed on waivers for 48 hours.",
+        "Each team has a waiver priority position, viewable in the league standings.",
+        "During the waiver period, if every team tries to claim the player, the team with the highest waiver position (1 being highest) is awarded the player. If nobody else claims the player, you get the player at the end of the waiver period. Once a team successfully claims a player, their waiver priority resets to the lowest position on the list.",
+        "All players not on waivers are free agents, available for immediate pickup on a first-come, first-served basis after the waiver period ends."
+      ]
+    },
+    {
+      "title": "IR Slot",
+      "items": [
+        "Only one IR player per team. The IR option is for players officially placed on the NFL's Injured Reserve list. Placing an eligible player in the IR spot frees up a roster spot, allowing the team to add a new player while retaining rights to the injured player.",
+        "A player acquired as a free agent and then placed on IR is only eligible to be a keeper the following season if they were on your roster before being placed on IR.",
+        "Players acquired as a free agent after they have been placed on IR are not eligible to be a keeper the following season."
+      ]
+    },
+    {
+      "title": "Contagious Disease IR Slot",
+      "items": [
+        "In the event of a contagious disease (e.g. COVID-19), an additional IR slot will be added for each team. This slot may only be used for players who are unavailable due to the related incident."
+      ]
+    },
+    {
+      "title": "Dropping Out of League",
+      "items": [
+        "A manager may leave the league at any time.",
+        "If a replacement manager is found, they will take over the existing team and its current roster.",
+        "If a suitable replacement cannot be found, the team's roster will be dissolved, and all players will be returned to the draft pool."
+      ]
+    },
+    {
+      "title": "Tanking Safeguards",
+      "items": [
+        "Consolation Bracket: the winner of the consolation bracket picks their draft position.",
+        "A weekly points winner of $75 after the trade deadline.",
+        "Each team is allowed to send OR receive one draft pick via trade in rounds 1-3, one draft pick via trade in rounds 4-7, and one draft pick via trade in rounds 8+.",
+        "The loser of the league must host the following year's draft and provide food or tip at a restaurant.",
+        "The league champion will be awarded the best available parking spot at the draft.",
+        "11th place calls the remote person, 10th if there are two, 9th if there are three, and so on."
+      ]
+    },
+    {
+      "title": "Roster Positions",
+      "items": [
+        "QB, WR, WR, RB, RB, WR/RB/TE, TE, K, DEF, BN, BN, BN, BN, BN, BN (15 players)."
+      ]
+    }
+  ],
+  "notes": [
+    "Source: HMC Fantasy Football Bible and Rule Book, 2026 edition (compiled from league screenshots). Scoring settings are captured separately in settings.json.",
+    "The 2018-era Google Doc \"HMC Fantasy Football Bible v9\" contains earlier drafts of several of these rules (different entry fee, payout, and trade-deadline figures) — the 2026 rule book above supersedes it."
+  ]
+}

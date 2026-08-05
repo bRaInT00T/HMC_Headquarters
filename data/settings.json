@@ -1,0 +1,79 @@
+{
+  "leagueName": "The Handsome Men's Club (HMC)",
+  "platform": "Yahoo Fantasy Football",
+  "lastUpdated": "2026-08-05",
+  "leagueMechanics": [
+    { "label": "Max Acquisitions for Entire Season", "value": "No maximum" },
+    { "label": "Max Acquisitions per Week", "value": "No maximum" },
+    { "label": "Max Trades for Entire Season", "value": "No maximum" },
+    { "label": "Trade End Date", "value": "November 19 (verify current-season date in Yahoo before trade deadline)" },
+    { "label": "Allow Draft Pick Trades", "value": "Yes" },
+    { "label": "Trade Review", "value": "Commissioner" },
+    { "label": "Trade Reject Time", "value": "2 days" },
+    { "label": "Waiver Time", "value": "2 days" },
+    { "label": "Waiver Type", "value": "FAB w/ Continual rolling list tiebreak" },
+    { "label": "Weekly Waivers", "value": "Game Time - Tuesday" },
+    { "label": "Allow injured players from waivers or free agents to be added directly to injury slot", "value": "No" },
+    { "label": "Post Draft Players", "value": "Free Agents" },
+    { "label": "Invite Sharing Tools", "value": "Enabled" },
+    { "label": "Playoffs", "value": "6 teams - Weeks 15, 16 and 17 (ends Monday, Jan 2)" },
+    { "label": "Playoff Tie-Breaker", "value": "Best regular season record vs. opponent wins" },
+    { "label": "Playoff Reseeding", "value": "No" },
+    { "label": "Divisions", "value": "No" },
+    { "label": "Lock Eliminated Teams", "value": "No" },
+    { "label": "League Pickem", "value": "Yes" },
+    { "label": "Apply Injured Status For Postponed Games", "value": "No" },
+    { "label": "Roster Positions", "value": "QB, WR, WR, RB, RB, TE, W/R/T, K, DEF, BN, BN, BN, BN, BN, BN, IR, IR" },
+    { "label": "Fractional Points", "value": "Yes" },
+    { "label": "Negative Points", "value": "Yes" }
+  ],
+  "scoring": {
+    "offense": [
+      { "stat": "Passing Yards", "value": "25 yards per point; 2 points at 400 yards" },
+      { "stat": "Passing Touchdowns", "value": "4" },
+      { "stat": "Interceptions", "value": "-2", "note": "Yahoo Default" },
+      { "stat": "Rushing Yards", "value": "10 yards per point; 2 points at 200 yards" },
+      { "stat": "Rushing Touchdowns", "value": "6" },
+      { "stat": "Receptions", "value": "0.5" },
+      { "stat": "Receiving Yards", "value": "10 yards per point; 2 points at 200 yards" },
+      { "stat": "Receiving Touchdowns", "value": "6" },
+      { "stat": "Return Touchdowns", "value": "6 (individual player only)" },
+      { "stat": "2-Point Conversions", "value": "2" },
+      { "stat": "Fumbles", "value": "-1", "note": "Yahoo Default" },
+      { "stat": "Fumbles Lost", "value": "-1", "note": "Yahoo Default" },
+      { "stat": "Offensive Fumble Return TD", "value": "6" }
+    ],
+    "kickers": [
+      { "stat": "Field Goals 0-19 Yards", "value": "3" },
+      { "stat": "Field Goals 20-29 Yards", "value": "3" },
+      { "stat": "Field Goals 30-39 Yards", "value": "3" },
+      { "stat": "Field Goals 40-49 Yards", "value": "4" },
+      { "stat": "Field Goals 50+ Yards", "value": "5" },
+      { "stat": "Field Goals Missed 0-19 Yards", "value": "-2", "note": "Yahoo Default" },
+      { "stat": "Field Goals Missed 20-29 Yards", "value": "-1", "note": "Yahoo Default" },
+      { "stat": "Point After Attempt Made", "value": "1" },
+      { "stat": "Point After Attempt Missed", "value": "-2", "note": "Yahoo Default" }
+    ],
+    "defenseSpecialTeams": [
+      { "stat": "Sack", "value": "1" },
+      { "stat": "Interception", "value": "2" },
+      { "stat": "Fumble Recovery", "value": "2" },
+      { "stat": "Touchdown", "value": "6" },
+      { "stat": "Safety", "value": "3", "note": "Yahoo Default" },
+      { "stat": "Blocked Kick", "value": "3", "note": "Yahoo Default" },
+      { "stat": "Kickoff and Punt Return Touchdowns", "value": "6 (team only, not individual player)" },
+      { "stat": "Points Allowed 0 Points", "value": "10" },
+      { "stat": "Points Allowed 1-6 Points", "value": "7" },
+      { "stat": "Points Allowed 7-13 Points", "value": "4" },
+      { "stat": "Points Allowed 14-20 Points", "value": "1" },
+      { "stat": "Points Allowed 21-27 Points", "value": "0" },
+      { "stat": "Points Allowed 28-34 Points", "value": "-1" },
+      { "stat": "Points Allowed 35+ Points", "value": "-4" },
+      { "stat": "Extra Point Returned", "value": "2" }
+    ]
+  },
+  "notes": [
+    "League mechanics table captured from a Yahoo league settings screenshot. The Trade End Date field showed a stale year (2022) at capture time — confirm the current season's actual date in Yahoo and correct here.",
+    "Roster positions here (with 2 IR slots) reflect the Yahoo settings screenshot; the rule book's roster line (data/rules.json) omits the IR slots — treat this settings.json as authoritative for exact Yahoo configuration."
+  ]
+}

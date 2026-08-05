@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Settings — HMC Fantasy Football</title>
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <span class="mark">🏈 The Handsome Men's Club</span>
+    <span class="sub">Fantasy Football League</span>
+  </div>
+  <nav class="site-nav">
+    <a href="index.html">Home</a>
+    <a href="rules.html">Rules</a>
+    <a href="settings.html" class="active">Settings</a>
+    <a href="draft.html">Draft Board</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-header">
+    <div>
+      <h1 id="doc-title">League Settings</h1>
+      <p id="doc-updated"></p>
+    </div>
+    <div class="history-panel">
+      <h3>Version History</h3>
+      <div id="settings-history">Loading…</div>
+    </div>
+  </div>
+
+  <section class="rules-section">
+    <h2>League Mechanics (Yahoo)</h2>
+    <table class="scoring-table" id="mechanics-table"></table>
+  </section>
+
+  <section class="rules-section">
+    <h2>Scoring — Offense</h2>
+    <table class="scoring-table" id="offense-table"></table>
+  </section>
+
+  <section class="rules-section">
+    <h2>Scoring — Kickers</h2>
+    <table class="scoring-table" id="kickers-table"></table>
+  </section>
+
+  <section class="rules-section">
+    <h2>Scoring — Defense / Special Teams</h2>
+    <table class="scoring-table" id="dst-table"></table>
+  </section>
+
+  <div class="note-box" id="settings-notes"></div>
+</main>
+
+<footer class="site-footer">
+  Settings are edited directly in <code>data/settings.json</code> in the site's GitHub repo — every commit shows up
+  in the Version History panel above with who changed it, when, and what changed.
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/history.js"></script>
+<script>
+  function renderKV(tableId, rows, keyLabel, valLabel) {
+    const t = document.getElementById(tableId);
+    t.innerHTML = `<thead><tr><th>${keyLabel}</th><th>${valLabel}</th></tr></thead><tbody>${rows
+      .map((r) => `<tr><td>${escapeHtml(r.label || r.stat)}${r.note ? ` <span style="color:var(--text-dim)">(${escapeHtml(r.note)})</span>` : ""}</td><td>${escapeHtml(r.value)}</td></tr>`)
+      .join("")}</tbody>`;
+  }
+
+  async function loadSettings() {
+    const res = await fetch("data/settings.json?" + Date.now());
+    const data = await res.json();
+
+    document.getElementById("doc-title").textContent = `${data.leagueName} — League Settings`;
+    document.getElementById("doc-updated").textContent = `Platform: ${data.platform} · Last updated ${data.lastUpdated}`;
+
+    renderKV("mechanics-table", data.leagueMechanics, "Setting", "Value");
+    renderKV("offense-table", data.scoring.offense, "Stat", "League Value");
+    renderKV("kickers-table", data.scoring.kickers, "Stat", "League Value");
+    renderKV("dst-table", data.scoring.defenseSpecialTeams, "Stat", "League Value");
+
+    if (data.notes && data.notes.length) {
+      document.getElementById("settings-notes").innerHTML =
+        "<strong>Notes:</strong><br>" + data.notes.map(escapeHtml).join("<br>");
+    }
+
+    renderHistory("settings-history", "data/settings.json");
+  }
+  loadSettings().catch((e) => {
+    document.getElementById("mechanics-table").outerHTML = "Couldn't load settings.json: " + e.message;
+  });
+</script>
+</body>
+</html>
