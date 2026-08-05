@@ -268,8 +268,12 @@
   let playerSuggestions = [];
   let playerSuggestionIndex = -1;
   let playerSearchTimer = null;
+  let playerAutocompleteWired = false;
 
   function wirePlayerAutocomplete() {
+    if (playerAutocompleteWired) return;
+    playerAutocompleteWired = true;
+
     const input = document.getElementById("pick-player");
     const dropdown = document.getElementById("player-suggestions");
 
