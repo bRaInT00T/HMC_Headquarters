@@ -81,9 +81,10 @@
           <label>Team (slot)</label>
           <select id="pick-slot"></select>
         </div>
-        <div>
+        <div class="player-autocomplete">
           <label>Player Name</label>
-          <input id="pick-player" type="text" placeholder="e.g. Ja'Marr Chase" />
+          <input id="pick-player" type="text" placeholder="e.g. Ja'Marr Chase" autocomplete="off" />
+          <div id="player-suggestions" class="search-results" hidden></div>
         </div>
         <div>
           <label>Position</label>
@@ -135,6 +136,7 @@
   let liveSyncTimer = null;
 
   async function initAdmin() {
+    wirePlayerAutocomplete();
     sb = getSupabaseClient();
     if (new URLSearchParams(location.search).get("yahoo") === "connected") {
       document.getElementById("yahoo-status").textContent = "Yahoo account connected.";
@@ -261,6 +263,109 @@
       status.textContent = "Error: " + e.message;
       status.className = "status-msg err";
     }
+  }
+
+  let playerSuggestions = [];
+  let playerSuggestionIndex = -1;
+  let playerSearchTimer = null;
+  let playerAutocompleteWired = false;
+  let playerSearchSeq = 0;
+
+  function wirePlayerAutocomplete() {
+    if (playerAutocompleteWired) return;
+    playerAutocompleteWired = true;
+
+    const input = document.getElementById("pick-player");
+    const dropdown = document.getElementById("player-suggestions");
+
+    input.addEventListener("input", () => {
+      clearTimeout(playerSearchTimer);
+      const q = input.value.trim();
+      if (q.length < 2) {
+        hidePlayerSuggestions();
+        return;
+      }
+      playerSearchTimer = setTimeout(() => searchPlayers(q), 300);
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (dropdown.hidden) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        playerSuggestionIndex = Math.min(playerSuggestionIndex + 1, playerSuggestions.length - 1);
+        renderPlayerSuggestions();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        playerSuggestionIndex = Math.max(playerSuggestionIndex - 1, -1);
+        renderPlayerSuggestions();
+      } else if (e.key === "Enter" && playerSuggestionIndex >= 0) {
+        e.preventDefault();
+        selectPlayerSuggestion(playerSuggestionIndex);
+      } else if (e.key === "Escape") {
+        hidePlayerSuggestions();
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+        hidePlayerSuggestions();
+      }
+    });
+  }
+
+  async function searchPlayers(q) {
+    const seq = ++playerSearchSeq;
+    try {
+      const alreadyDrafted = new Set((currentPicks || []).map((p) => (p.player || "").toLowerCase()));
+      const result = await callAdminApi("/api/yahoo/players", { q });
+      if (seq !== playerSearchSeq) return; // a newer search superseded this one; discard stale response
+      playerSuggestions = (result.players || []).filter((p) => !alreadyDrafted.has(p.name.toLowerCase()));
+      playerSuggestionIndex = -1;
+      renderPlayerSuggestions();
+    } catch (e) {
+      if (seq !== playerSearchSeq) return;
+      console.warn("Player autocomplete failed:", e.message);
+      hidePlayerSuggestions();
+    }
+  }
+
+  function renderPlayerSuggestions() {
+    const dropdown = document.getElementById("player-suggestions");
+    if (!playerSuggestions.length) {
+      hidePlayerSuggestions();
+      return;
+    }
+    dropdown.innerHTML = playerSuggestions
+      .map(
+        (p, i) => `<div class="search-result${i === playerSuggestionIndex ? " active" : ""}" data-index="${i}">
+          <span class="search-text">${escapeHtml(p.name)}</span>
+          <span class="search-breadcrumb">${escapeHtml(p.position || "")}${p.nflTeam ? " · " + escapeHtml(p.nflTeam) : ""}</span>
+        </div>`
+      )
+      .join("");
+    dropdown.hidden = false;
+    dropdown.querySelectorAll(".search-result").forEach((el) => {
+      el.addEventListener("click", () => selectPlayerSuggestion(Number(el.dataset.index)));
+    });
+  }
+
+  function selectPlayerSuggestion(index) {
+    const p = playerSuggestions[index];
+    if (!p) return;
+    document.getElementById("pick-player").value = p.name;
+    document.getElementById("pick-position").value = p.position || "";
+    document.getElementById("pick-nflteam").value = p.nflTeam || "";
+    hidePlayerSuggestions();
+  }
+
+  function hidePlayerSuggestions() {
+    clearTimeout(playerSearchTimer);
+    playerSearchSeq++; // invalidate any in-flight searchPlayers() so it can't reopen this dropdown
+    playerSuggestions = [];
+    playerSuggestionIndex = -1;
+    const dropdown = document.getElementById("player-suggestions");
+    dropdown.hidden = true;
+    dropdown.innerHTML = "";
   }
 </script>
 </body>
