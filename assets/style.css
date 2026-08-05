@@ -112,6 +112,14 @@ nav.site-nav a.active {
 .search-result:last-child { border-bottom: none; }
 .search-result:hover { background: var(--bg-panel-2); text-decoration: none; }
 
+.player-autocomplete {
+  position: relative;
+}
+
+.search-result.active {
+  background: var(--bg-panel-2);
+}
+
 .search-breadcrumb {
   display: block;
   color: var(--text-dim);
