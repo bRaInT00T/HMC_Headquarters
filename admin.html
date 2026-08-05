@@ -269,6 +269,7 @@
   let playerSuggestionIndex = -1;
   let playerSearchTimer = null;
   let playerAutocompleteWired = false;
+  let playerSearchSeq = 0;
 
   function wirePlayerAutocomplete() {
     if (playerAutocompleteWired) return;
@@ -313,13 +314,16 @@
   }
 
   async function searchPlayers(q) {
+    const seq = ++playerSearchSeq;
     try {
       const alreadyDrafted = new Set((currentPicks || []).map((p) => (p.player || "").toLowerCase()));
       const result = await callAdminApi("/api/yahoo/players", { q });
+      if (seq !== playerSearchSeq) return; // a newer search superseded this one; discard stale response
       playerSuggestions = (result.players || []).filter((p) => !alreadyDrafted.has(p.name.toLowerCase()));
       playerSuggestionIndex = -1;
       renderPlayerSuggestions();
     } catch (e) {
+      if (seq !== playerSearchSeq) return;
       console.warn("Player autocomplete failed:", e.message);
       hidePlayerSuggestions();
     }
@@ -355,6 +359,8 @@
   }
 
   function hidePlayerSuggestions() {
+    clearTimeout(playerSearchTimer);
+    playerSearchSeq++; // invalidate any in-flight searchPlayers() so it can't reopen this dropdown
     playerSuggestions = [];
     playerSuggestionIndex = -1;
     const dropdown = document.getElementById("player-suggestions");
