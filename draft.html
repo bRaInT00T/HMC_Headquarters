@@ -18,6 +18,10 @@
     <a href="settings.html">Settings</a>
     <a href="draft.html" class="active">Draft Board</a>
   </nav>
+  <div class="site-search">
+    <input type="search" id="global-search" placeholder="Search rules & settings…" autocomplete="off" />
+    <div id="search-results" class="search-results" hidden></div>
+  </div>
 </header>
 
 <main>
@@ -47,6 +51,7 @@
 <script src="js/history.js"></script>
 <script src="js/draftboard.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/search.js"></script>
 <script>
   let sb = null;
   let config = null;

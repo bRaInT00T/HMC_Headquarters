@@ -17,6 +17,10 @@
     <a href="index.html">Home</a>
     <a href="draft.html">Public Draft Board</a>
   </nav>
+  <div class="site-search">
+    <input type="search" id="global-search" placeholder="Search rules & settings…" autocomplete="off" />
+    <div id="search-results" class="search-results" hidden></div>
+  </div>
 </header>
 
 <main>
@@ -111,6 +115,7 @@
 <script src="js/history.js"></script>
 <script src="js/draftboard.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/search.js"></script>
 <script>
   // Cosmetic-looking, but real: this password is sent as x-admin-password
   // on every write call and checked server-side against the ADMIN_PASSWORD

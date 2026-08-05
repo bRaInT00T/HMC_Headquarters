@@ -18,6 +18,10 @@
     <a href="settings.html">Settings</a>
     <a href="draft.html">Draft Board</a>
   </nav>
+  <div class="site-search">
+    <input type="search" id="global-search" placeholder="Search rules & settings…" autocomplete="off" />
+    <div id="search-results" class="search-results" hidden></div>
+  </div>
 </header>
 
 <main>
@@ -55,9 +59,9 @@
     const container = document.getElementById("rules-sections");
     container.innerHTML = data.sections
       .map(
-        (s) => `<section class="rules-section">
+        (s, si) => `<section class="rules-section" id="rules-sec-${si}">
           <h2>${escapeHtml(s.title)}</h2>
-          <ul>${s.items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>
+          <ul>${s.items.map((i, ii) => `<li id="rules-item-${si}-${ii}">${escapeHtml(i)}</li>`).join("")}</ul>
         </section>`
       )
       .join("");
@@ -68,10 +72,12 @@
     }
 
     renderHistory("rules-history", "data/rules.json");
+    if (window.highlightHash) window.highlightHash();
   }
   loadRules().catch((e) => {
     document.getElementById("rules-sections").textContent = "Couldn't load rules.json: " + e.message;
   });
 </script>
+<script src="js/search.js"></script>
 </body>
 </html>

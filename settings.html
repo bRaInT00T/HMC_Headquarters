@@ -18,6 +18,10 @@
     <a href="settings.html" class="active">Settings</a>
     <a href="draft.html">Draft Board</a>
   </nav>
+  <div class="site-search">
+    <input type="search" id="global-search" placeholder="Search rules & settings…" autocomplete="off" />
+    <div id="search-results" class="search-results" hidden></div>
+  </div>
 </header>
 
 <main>
@@ -63,10 +67,10 @@
 <script src="js/config.js"></script>
 <script src="js/history.js"></script>
 <script>
-  function renderKV(tableId, rows, keyLabel, valLabel) {
+  function renderKV(tableId, rows, keyLabel, valLabel, rowIdPrefix) {
     const t = document.getElementById(tableId);
     t.innerHTML = `<thead><tr><th>${keyLabel}</th><th>${valLabel}</th></tr></thead><tbody>${rows
-      .map((r) => `<tr><td>${escapeHtml(r.label || r.stat)}${r.note ? ` <span style="color:var(--text-dim)">(${escapeHtml(r.note)})</span>` : ""}</td><td>${escapeHtml(r.value)}</td></tr>`)
+      .map((r, ri) => `<tr id="settings-row-${rowIdPrefix}-${ri}"><td>${escapeHtml(r.label || r.stat)}${r.note ? ` <span style="color:var(--text-dim)">(${escapeHtml(r.note)})</span>` : ""}</td><td>${escapeHtml(r.value)}</td></tr>`)
       .join("")}</tbody>`;
   }
 
@@ -77,10 +81,10 @@
     document.getElementById("doc-title").textContent = `${data.leagueName} — League Settings`;
     document.getElementById("doc-updated").textContent = `Platform: ${data.platform} · Last updated ${data.lastUpdated}`;
 
-    renderKV("mechanics-table", data.leagueMechanics, "Setting", "Value");
-    renderKV("offense-table", data.scoring.offense, "Stat", "League Value");
-    renderKV("kickers-table", data.scoring.kickers, "Stat", "League Value");
-    renderKV("dst-table", data.scoring.defenseSpecialTeams, "Stat", "League Value");
+    renderKV("mechanics-table", data.leagueMechanics, "Setting", "Value", "mechanics");
+    renderKV("offense-table", data.scoring.offense, "Stat", "League Value", "offense");
+    renderKV("kickers-table", data.scoring.kickers, "Stat", "League Value", "kickers");
+    renderKV("dst-table", data.scoring.defenseSpecialTeams, "Stat", "League Value", "dst");
 
     if (data.notes && data.notes.length) {
       document.getElementById("settings-notes").innerHTML =
@@ -88,10 +92,12 @@
     }
 
     renderHistory("settings-history", "data/settings.json");
+    if (window.highlightHash) window.highlightHash();
   }
   loadSettings().catch((e) => {
     document.getElementById("mechanics-table").outerHTML = "Couldn't load settings.json: " + e.message;
   });
 </script>
+<script src="js/search.js"></script>
 </body>
 </html>
