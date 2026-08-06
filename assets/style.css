@@ -161,6 +161,16 @@ main {
   padding: 40px 0 24px;
 }
 
+.hero-logo {
+  height: 120px;
+  width: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 0 6px var(--bg), 0 8px 24px rgba(0, 0, 0, 0.5);
+  margin-bottom: 20px;
+}
+
 .hero h1 {
   font-size: 3.2rem;
   line-height: 1.1;
