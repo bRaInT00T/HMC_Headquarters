@@ -41,16 +41,12 @@ header.site-header {
 }
 
 .brand .logo {
-  height: 36px;
-  width: 36px;
-  object-fit: contain;
-  border-radius: 6px;
-}
-
-.brand .mark {
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: 0.02em;
+  height: 48px;
+  width: 48px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px var(--bg), 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .brand .sub {
