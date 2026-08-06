@@ -159,6 +159,14 @@ main {
 
 .hero {
   padding: 40px 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.hero-logo-col {
+  flex-shrink: 0;
 }
 
 .hero-logo {
@@ -168,7 +176,10 @@ main {
   border-radius: 50%;
   border: 3px solid var(--accent);
   box-shadow: 0 0 0 6px var(--bg), 0 8px 24px rgba(0, 0, 0, 0.5);
-  margin-bottom: 20px;
+}
+
+.hero-text-col {
+  min-width: 0;
 }
 
 .hero h1 {
