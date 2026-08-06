@@ -170,12 +170,11 @@ main {
 }
 
 .hero-logo {
-  height: 120px;
-  width: 120px;
+  height: 180px;
+  width: 180px;
   object-fit: cover;
   border-radius: 50%;
-  border: 3px solid var(--accent);
-  box-shadow: 0 0 0 6px var(--bg), 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .hero-text-col {
