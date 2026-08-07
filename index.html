@@ -26,6 +26,8 @@
 </header>
 
 <main>
+  <section class="countdown" id="draft-countdown" hidden></section>
+
   <div class="hero">
     <div class="hero-logo-col">
       <img src="assets/logo.png" alt="The Handsome Men's Club" class="hero-logo" />
@@ -68,6 +70,32 @@
 
 <footer class="site-footer">The Handsome Men's Club Fantasy Football League</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/countdown.js"></script>
 <script src="js/search.js"></script>
+<script>
+  // The countdown reads the same draft_config row the draft board does, and
+  // stays subscribed so a date saved from admin.html lands here without a reload.
+  (async function initCountdown() {
+    const el = document.getElementById("draft-countdown");
+    const sb = getSupabaseClient();
+    if (!sb) return;
+
+    let stop = null;
+    async function refresh() {
+      const { data, error } = await sb.from("draft_config").select("draft_date").eq("id", 1).limit(1);
+      if (error || !data || !data.length) return;
+      if (stop) stop();
+      stop = startDraftCountdown(el, data[0].draft_date);
+    }
+
+    await refresh();
+    sb.channel("home-countdown")
+      .on("postgres_changes", { event: "*", schema: "public", table: "draft_config" }, refresh)
+      .subscribe();
+  })();
+</script>
 </body>
 </html>

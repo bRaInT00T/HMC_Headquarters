@@ -65,7 +65,25 @@
     </section>
 
     <section class="rules-section">
-      <h2>2. Draft Order Setup</h2>
+      <h2>2. Draft Date</h2>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Shown on the public draft board, and counted
+        down to on the homepage. Time is optional — leave it blank if you've only locked in the day.</p>
+      <div class="field-row">
+        <label class="field-label">Date
+          <input id="draft-date-input" type="date" oninput="previewDraftDate()" />
+        </label>
+        <label class="field-label">Time <span class="field-hint">(optional)</span>
+          <input id="draft-time-input" type="time" oninput="previewDraftDate()" />
+        </label>
+        <button class="btn secondary" onclick="saveDraftDate()">Save Draft Date</button>
+        <button class="btn secondary" onclick="clearDraftDate()">Set back to TBD</button>
+      </div>
+      <p id="draft-date-preview" class="status-msg"></p>
+      <p id="draft-date-status" class="status-msg"></p>
+    </section>
+
+    <section class="rules-section">
+      <h2>3. Draft Order Setup</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Draft order is drawn from a hat each year. Yahoo sync backfills this automatically from round 1 — or set it by hand below before the draft starts. Drag a row by its handle to reorder.</p>
       <button class="btn secondary" style="margin-bottom:10px;" onclick="loadYahooTeams()">Load Teams from Yahoo</button>
       <div id="team-inputs" class="draft-order-list"></div>
@@ -74,7 +92,7 @@
     </section>
 
     <section class="rules-section">
-      <h2>3. Player Database</h2>
+      <h2>4. Player Database</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">
         Powers the autocomplete in "Record a Pick Manually" below. Pulls the NFL player list from
         balldontlie's API into Supabase — run it once before draft day, and again if rosters change
@@ -87,7 +105,7 @@
     </section>
 
     <section class="rules-section">
-      <h2>4. Record a Pick Manually</h2>
+      <h2>5. Record a Pick Manually</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.</p>
       <form class="pick-form" onsubmit="return false;">
         <div>
@@ -133,6 +151,7 @@
 <script src="js/history.js"></script>
 <script src="js/draftboard.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/countdown.js"></script>
 <script src="js/search.js"></script>
 <script>
   // Cosmetic-looking, but real: this password is sent as x-admin-password
@@ -186,12 +205,20 @@
       sb.from("draft_config").select("*").eq("id", 1).limit(1),
       sb.from("draft_picks").select("*").order("overall_pick")
     ]);
-    currentConfig = { rounds: cfgRows[0].rounds, teams: cfgRows[0].teams };
+    currentConfig = { rounds: cfgRows[0].rounds, teams: cfgRows[0].teams, draftDate: cfgRows[0].draft_date };
     currentPicks = picks;
     // Skip re-rendering the team-order inputs while someone's actively
     // typing in one (a realtime event mid-edit would otherwise wipe it).
     const teamInputsEl = document.getElementById("team-inputs");
     if (!teamInputsEl.contains(document.activeElement)) renderTeamInputs();
+    const draftDateEl = document.getElementById("draft-date-input");
+    const draftTimeEl = document.getElementById("draft-time-input");
+    if (document.activeElement !== draftDateEl && document.activeElement !== draftTimeEl) {
+      const picker = draftDateToPickerValues(currentConfig.draftDate);
+      draftDateEl.value = picker.date;
+      draftTimeEl.value = picker.time;
+      previewDraftDate();
+    }
     renderSlotSelect();
     renderBoard("board", currentConfig, currentPicks);
   }
@@ -361,6 +388,65 @@
       status.className = "status-msg err";
     } finally {
       btn.disabled = false;
+    }
+  }
+
+  // Reads the pickers and builds the string that gets stored — null when no
+  // date is picked yet.
+  function draftDateFromPickers() {
+    const date = document.getElementById("draft-date-input").value;
+    const time = document.getElementById("draft-time-input").value;
+    return date ? formatDraftDateForStorage(date, time) : null;
+  }
+
+  // Shows what the homepage countdown will run to as the pickers change.
+  function previewDraftDate() {
+    const el = document.getElementById("draft-date-preview");
+    const draftDate = draftDateFromPickers();
+    const parsed = draftDate && parseDraftDate(draftDate);
+    if (parsed) {
+      el.textContent = "Countdown will run to " + formatDraftDate(parsed);
+      el.className = "status-msg ok";
+    } else if (currentConfig && !parseDraftDate(currentConfig.draftDate)) {
+      el.textContent = `No date set — the board shows "${currentConfig.draftDate}" and the homepage countdown stays hidden.`;
+      el.className = "status-msg";
+    } else {
+      el.textContent = "";
+      el.className = "status-msg";
+    }
+  }
+
+  async function saveDraftDate() {
+    const status = document.getElementById("draft-date-status");
+    const draftDate = draftDateFromPickers();
+    if (!draftDate) {
+      status.textContent = "Pick a date first.";
+      status.className = "status-msg err";
+      return;
+    }
+    try {
+      await callAdminApi("/api/draft-config/save", { draftDate });
+      status.textContent = `Draft date saved as "${draftDate}".`;
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    }
+  }
+
+  // Clears the date back to a placeholder, which hides the homepage countdown.
+  // The save API ignores an empty string, so store the literal "TBD".
+  async function clearDraftDate() {
+    const status = document.getElementById("draft-date-status");
+    try {
+      await callAdminApi("/api/draft-config/save", { draftDate: "TBD" });
+      document.getElementById("draft-date-input").value = "";
+      document.getElementById("draft-time-input").value = "";
+      status.textContent = "Draft date reset to TBD.";
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
     }
   }
 

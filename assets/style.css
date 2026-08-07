@@ -157,6 +157,102 @@ main {
   padding: 32px 24px 80px;
 }
 
+/* Draft-day countdown (homepage hero banner) */
+.countdown {
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+  padding: 32px 28px 28px;
+  text-align: center;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(212, 175, 55, 0.18) 0%, rgba(212, 175, 55, 0) 60%),
+    var(--bg-panel);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.countdown-label {
+  margin: 0 0 18px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.countdown-units {
+  display: flex;
+  justify-content: center;
+  gap: clamp(10px, 4vw, 32px);
+  flex-wrap: wrap;
+}
+
+.countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 78px;
+}
+
+.countdown-num {
+  font-size: clamp(2.8rem, 11vw, 5.5rem);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-shadow: 0 4px 18px rgba(212, 175, 55, 0.25);
+}
+
+.countdown-unit-label {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.countdown-date {
+  margin: 18px 0 0;
+  color: var(--text-dim);
+  font-size: 0.92rem;
+}
+
+.countdown-cta { margin-top: 16px; }
+
+/* Final day: swap the gold trim for something louder. */
+.countdown.is-imminent {
+  border-color: var(--accent);
+  animation: countdown-pulse 2.4s ease-in-out infinite;
+}
+.countdown.is-imminent .countdown-num { color: var(--accent); }
+
+.countdown.is-live {
+  border-color: var(--accent);
+  animation: countdown-pulse 2.4s ease-in-out infinite;
+}
+
+.countdown-live {
+  margin: 0;
+  font-size: clamp(2.6rem, 13vw, 6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  text-shadow: 0 4px 24px rgba(212, 175, 55, 0.35);
+}
+
+@keyframes countdown-pulse {
+  0%, 100% { box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(212, 175, 55, 0.28); }
+  50% { box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 0 0 12px rgba(212, 175, 55, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown.is-imminent,
+  .countdown.is-live { animation: none; }
+}
+
 .hero {
   padding: 40px 0 24px;
   display: flex;
@@ -453,6 +549,35 @@ form.pick-form input, form.pick-form select {
   font-size: 0.9rem;
 }
 form.pick-form .full-row { grid-column: 1 / -1; display: flex; gap: 10px; align-items: end; }
+
+/* Standalone labelled field (draft-date pickers), matching form.pick-form */
+.field-row {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.field-hint { opacity: 0.7; }
+
+.field-label input {
+  display: block;
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+  /* Renders the native calendar/clock popups and their icons dark, too. */
+  color-scheme: dark;
+}
 
 .status-msg { font-size: 0.85rem; margin-top: 8px; }
 .status-msg.ok { color: var(--accent-2); }
