@@ -71,7 +71,20 @@
     </section>
 
     <section class="rules-section">
-      <h2>3. Record a Pick Manually</h2>
+      <h2>3. Player Database</h2>
+      <p style="color:var(--text-dim);font-size:0.88rem;">
+        Powers the autocomplete in "Record a Pick Manually" below. Pulls the NFL player list from
+        balldontlie's API into Supabase — run it once before draft day, and again if rosters change
+        (trades, waivers). Takes a few minutes since the free API tier is rate-limited.
+      </p>
+      <div class="full-row">
+        <button class="btn secondary" id="sync-players-btn" onclick="syncPlayers()">Sync Players</button>
+      </div>
+      <p id="player-sync-status" class="status-msg"></p>
+    </section>
+
+    <section class="rules-section">
+      <h2>4. Record a Pick Manually</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.</p>
       <form class="pick-form" onsubmit="return false;">
         <div>
@@ -125,6 +138,16 @@
   // client-side; nothing gets written without the server agreeing too.
   function checkPassword() {
     const val = document.getElementById("gate-password").value;
+    // fetch's Headers only accepts ISO-8859-1 in header values, and this
+    // password is sent as the x-admin-password header on every write call —
+    // catch a stray smart-quote/em-dash/emoji (common from pasting out of
+    // Notes/Word/a password manager) here instead of a cryptic fetch error
+    // on the first write.
+    if (/[^\x00-\xFF]/.test(val)) {
+      document.getElementById("gate-error").textContent =
+        "Password contains a character outside plain ASCII/Latin-1 (often from pasting from Notes, Word, or a password manager) — retype it directly instead of pasting.";
+      return;
+    }
     localStorage.setItem("hmc_admin_password", val);
     document.getElementById("gate").style.display = "none";
     document.getElementById("admin-content").style.display = "block";
@@ -209,6 +232,48 @@
     } else if (liveSyncTimer) {
       clearInterval(liveSyncTimer);
       liveSyncTimer = null;
+    }
+  }
+
+  const PLAYER_SYNC_PAGE_DELAY_MS = 13000; // balldontlie free tier: 5 req/min
+  const PLAYER_SYNC_MAX_RETRIES = 5;
+  const PLAYER_SYNC_RETRY_FALLBACK_MS = 30000; // used when balldontlie sends no Retry-After
+
+  async function syncPlayers() {
+    const status = document.getElementById("player-sync-status");
+    const btn = document.getElementById("sync-players-btn");
+    btn.disabled = true;
+    let cursor = null;
+    let total = 0;
+    let retries = 0;
+    let done = false;
+    try {
+      while (!done) {
+        status.textContent = `Syncing… ${total} players so far.`;
+        status.className = "status-msg";
+        let result;
+        try {
+          result = await callAdminApi("/api/players/sync-page", { cursor });
+          retries = 0;
+        } catch (e) {
+          if (e.retryAfterSeconds === undefined || ++retries > PLAYER_SYNC_MAX_RETRIES) throw e;
+          const waitMs = e.retryAfterSeconds ? e.retryAfterSeconds * 1000 : PLAYER_SYNC_RETRY_FALLBACK_MS;
+          status.textContent = `Rate limited — retrying in ${Math.round(waitMs / 1000)}s (attempt ${retries}/${PLAYER_SYNC_MAX_RETRIES})…`;
+          await new Promise((r) => setTimeout(r, waitMs));
+          continue; // retry the same cursor, no progress lost
+        }
+        total += result.synced;
+        cursor = result.nextCursor;
+        done = !cursor;
+        if (!done) await new Promise((r) => setTimeout(r, PLAYER_SYNC_PAGE_DELAY_MS));
+      }
+      status.textContent = `Done — synced ${total} players.`;
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -318,9 +383,16 @@
     const seq = ++playerSearchSeq;
     try {
       const alreadyDrafted = new Set((currentPicks || []).map((p) => (p.player || "").toLowerCase()));
-      const result = await callAdminApi("/api/yahoo/players", { q });
+      const { data, error } = await sb
+        .from("nfl_players")
+        .select("full_name, position, team")
+        .ilike("full_name", `%${q}%`)
+        .limit(10);
+      if (error) throw error;
       if (seq !== playerSearchSeq) return; // a newer search superseded this one; discard stale response
-      playerSuggestions = (result.players || []).filter((p) => !alreadyDrafted.has(p.name.toLowerCase()));
+      playerSuggestions = (data || [])
+        .filter((p) => !alreadyDrafted.has(p.full_name.toLowerCase()))
+        .map((p) => ({ name: p.full_name, position: p.position, nflTeam: p.team }));
       playerSuggestionIndex = -1;
       renderPlayerSuggestions();
     } catch (e) {

@@ -35,6 +35,20 @@ create table if not exists draft_picks (
   entered_at timestamptz not null default now()
 );
 
+-- ── nfl_players: local cache of balldontlie's NFL player list, synced from
+-- admin.html's "Sync Players" button — powers the manual pick-entry
+-- autocomplete without hitting an external API on every keystroke ──
+create table if not exists nfl_players (
+  id bigint primary key,
+  first_name text not null,
+  last_name text not null,
+  full_name text not null,
+  position text,
+  team text,
+  jersey_number text,
+  updated_at timestamptz not null default now()
+);
+
 -- ── yahoo_tokens: single row (id=1), server-only, never exposed to anon ──
 create table if not exists yahoo_tokens (
   id int primary key default 1,
@@ -47,6 +61,7 @@ create table if not exists yahoo_tokens (
 -- ── Row Level Security ──
 alter table draft_config enable row level security;
 alter table draft_picks enable row level security;
+alter table nfl_players enable row level security;
 alter table yahoo_tokens enable row level security;
 
 -- Public (anon key, used by draft.html/admin.html in the browser) can read
@@ -58,6 +73,9 @@ create policy "public read draft_config" on draft_config for select using (true)
 
 drop policy if exists "public read draft_picks" on draft_picks;
 create policy "public read draft_picks" on draft_picks for select using (true);
+
+drop policy if exists "public read nfl_players" on nfl_players;
+create policy "public read nfl_players" on nfl_players for select using (true);
 
 -- yahoo_tokens gets zero policies — no anon access at all, in either
 -- direction. Only the service role key (server-side only) can touch it.
