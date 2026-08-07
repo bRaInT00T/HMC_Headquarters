@@ -199,6 +199,48 @@ main {
   margin-top: 24px;
 }
 
+.draft-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  max-width: 480px;
+}
+
+.draft-order-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.draft-order-row.dragging {
+  opacity: 0.4;
+}
+
+.draft-order-row .drag-handle {
+  cursor: grab;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.draft-order-row .slot-label {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.draft-order-row select,
+.draft-order-row input[type="text"] {
+  flex: 1;
+}
+
 .card {
   background: var(--bg-panel);
   border: 1px solid var(--border);

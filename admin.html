@@ -66,8 +66,9 @@
 
     <section class="rules-section">
       <h2>2. Draft Order Setup</h2>
-      <p style="color:var(--text-dim);font-size:0.88rem;">Draft order is drawn from a hat each year. Yahoo sync backfills this automatically from round 1 — or set it by hand below before the draft starts.</p>
-      <div id="team-inputs" class="card-grid"></div>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Draft order is drawn from a hat each year. Yahoo sync backfills this automatically from round 1 — or set it by hand below before the draft starts. Drag a row by its handle to reorder.</p>
+      <button class="btn secondary" style="margin-bottom:10px;" onclick="loadYahooTeams()">Load Teams from Yahoo</button>
+      <div id="team-inputs" class="draft-order-list"></div>
       <button class="btn secondary" style="margin-top:10px;" onclick="saveDraftOrder()">Save Draft Order</button>
       <p id="order-status" class="status-msg"></p>
     </section>
@@ -195,15 +196,99 @@
     renderBoard("board", currentConfig, currentPicks);
   }
 
+  let yahooTeamOptions = []; // [{ name, manager }], populated by loadYahooTeams()
+  let dragSrcRow = null;
+
+  function teamOptionLabel(t) {
+    return t.manager ? `${t.name} — ${t.manager}` : t.name;
+  }
+
+  async function loadYahooTeams() {
+    const status = document.getElementById("order-status");
+    status.textContent = "Loading teams from Yahoo…";
+    status.className = "status-msg";
+    try {
+      const result = await callAdminApi("/api/yahoo/teams", {});
+      yahooTeamOptions = result.teams || [];
+      renderTeamInputs();
+      status.textContent = `Loaded ${yahooTeamOptions.length} team(s) from Yahoo.`;
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    }
+  }
+
   function renderTeamInputs() {
+    const optionLabels = yahooTeamOptions.map(teamOptionLabel);
     document.getElementById("team-inputs").innerHTML = currentConfig.teams
-      .map(
-        (t) => `<div class="card" style="padding:12px;">
-          <label>Slot ${t.slot}</label>
-          <input type="text" value="${escapeHtml(t.owner)}" data-slot="${t.slot}" class="team-owner-input" />
-        </div>`
-      )
+      .map((t) => {
+        const current = t.owner;
+        let optionsHtml = optionLabels
+          .map(
+            (label) =>
+              `<option value="${escapeHtml(label)}"${label === current ? " selected" : ""}>${escapeHtml(label)}</option>`
+          )
+          .join("");
+        if (!optionLabels.includes(current)) {
+          optionsHtml = `<option value="${escapeHtml(current)}" selected>${escapeHtml(current)}</option>` + optionsHtml;
+        }
+        optionsHtml += `<option value="__custom__">Custom…</option>`;
+        return `<div class="draft-order-row" draggable="true">
+          <span class="drag-handle" title="Drag to reorder">⠿</span>
+          <span class="slot-label">Slot ${t.slot}</span>
+          <select class="team-owner-select">${optionsHtml}</select>
+          <input type="text" class="team-owner-custom" placeholder="Custom name" style="display:none;" />
+        </div>`;
+      })
       .join("");
+    wireDraftOrderRows();
+  }
+
+  function wireDraftOrderRows() {
+    document.querySelectorAll("#team-inputs .draft-order-row").forEach((row) => {
+      row.addEventListener("dragstart", () => {
+        dragSrcRow = row;
+        row.classList.add("dragging");
+      });
+      row.addEventListener("dragend", () => {
+        row.classList.remove("dragging");
+        dragSrcRow = null;
+        renumberSlotLabels();
+      });
+      row.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (!dragSrcRow || dragSrcRow === row) return;
+        const container = document.getElementById("team-inputs");
+        const rows = Array.from(container.children);
+        const srcIndex = rows.indexOf(dragSrcRow);
+        const targetIndex = rows.indexOf(row);
+        if (srcIndex < targetIndex) {
+          container.insertBefore(dragSrcRow, row.nextSibling);
+        } else {
+          container.insertBefore(dragSrcRow, row);
+        }
+      });
+
+      const select = row.querySelector(".team-owner-select");
+      const customInput = row.querySelector(".team-owner-custom");
+      if (select.value === "__custom__") customInput.style.display = "";
+      select.addEventListener("change", () => {
+        if (select.value === "__custom__") {
+          customInput.style.display = "";
+          customInput.value = "";
+          customInput.focus();
+        } else {
+          customInput.style.display = "none";
+        }
+      });
+    });
+  }
+
+  function renumberSlotLabels() {
+    document.querySelectorAll("#team-inputs .draft-order-row .slot-label").forEach((el, i) => {
+      el.textContent = `Slot ${i + 1}`;
+    });
   }
 
   function renderSlotSelect() {
@@ -282,8 +367,13 @@
   async function saveDraftOrder() {
     const status = document.getElementById("order-status");
     try {
-      const inputs = document.querySelectorAll(".team-owner-input");
-      const teams = Array.from(inputs).map((inp) => ({ slot: Number(inp.dataset.slot), owner: inp.value.trim() || "TBD" }));
+      const rows = document.querySelectorAll("#team-inputs .draft-order-row");
+      const teams = Array.from(rows).map((row, i) => {
+        const select = row.querySelector(".team-owner-select");
+        const customInput = row.querySelector(".team-owner-custom");
+        const owner = select.value === "__custom__" ? customInput.value.trim() || "TBD" : select.value;
+        return { slot: i + 1, owner };
+      });
       await callAdminApi("/api/draft-config/save", { teams });
       status.textContent = "Draft order saved.";
       status.className = "status-msg ok";
