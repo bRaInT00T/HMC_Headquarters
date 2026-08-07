@@ -6,10 +6,10 @@
 //   which stays server-side in Vercel's environment variables and never
 //   appears in this repo).
 window.SITE_CONFIG = {
-  GITHUB_OWNER: "bRaInT00T",   // e.g. "nwwolk" — powers the Version History panels on rules.html/settings.html
-  GITHUB_REPO: "HMC_Headquarters",    // e.g. "hmc-ffl-site"
+  GITHUB_OWNER: "bRaInT00T",
+  GITHUB_REPO: "HMC_Headquarters",
   GITHUB_BRANCH: "main",
 
-  SUPABASE_URL: "{SUPABASE_URL}",       // e.g. "https://xxxxxxxx.supabase.co"
-  SUPABASE_ANON_KEY: "{SUPABASE_ANON_KEY}"   // Project Settings → API → anon public key
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
 };

@@ -15,6 +15,18 @@ module.exports = async (req, res) => {
   }
   if (!requireAdmin(req, res)) return;
 
+  // DEBUG: probe a public, non-personal endpoint first (no `use_login`) to
+  // isolate whether the 403 is app-wide or specific to accessing the user's
+  // own leagues/games.
+  const result = { publicGameEndpoint: null, personalLeaguesEndpoint: null };
+
+  try {
+    await yahooFetch("/game/nfl");
+    result.publicGameEndpoint = "ok";
+  } catch (e) {
+    result.publicGameEndpoint = "error: " + e.message;
+  }
+
   try {
     const json = await yahooFetch("/users;use_login=1/games;game_keys=nfl/leagues");
     const users = flattenYahooCollection(json.fantasy_content.users);
@@ -28,8 +40,10 @@ module.exports = async (req, res) => {
         });
       });
     });
-    res.status(200).json({ leagues });
+    result.personalLeaguesEndpoint = { leagues };
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    result.personalLeaguesEndpoint = "error: " + e.message;
   }
+
+  res.status(200).json(result);
 };
