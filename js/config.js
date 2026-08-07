@@ -10,6 +10,6 @@ window.SITE_CONFIG = {
   GITHUB_REPO: "HMC_Headquarters",
   GITHUB_BRANCH: "main",
 
-  SUPABASE_URL: process.env.SUPABASE_URL,
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
+  SUPABASE_URL: "https://zdndaffbigfqwgtwqtlx.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkbmRhZmZiaWdmcXdndHdxdGx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NTMzMDEsImV4cCI6MjEwMTUyOTMwMX0.LKeoD6DHeRzFxIel6paAk9SNupBcCPqFW6Up8Lk60WY"
 };
