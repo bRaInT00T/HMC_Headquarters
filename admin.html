@@ -31,8 +31,10 @@
       This password is checked server-side on every write (Yahoo sync, pick entry, draft order) —
       it's real access control now, not just a UI gate.
     </p>
-    <input id="gate-password" type="password" placeholder="Admin password" />
-    <button class="btn" onclick="checkPassword()">Enter</button>
+    <form onsubmit="checkPassword(); return false;">
+      <input id="gate-password" type="password" placeholder="Admin password" autofocus />
+      <button class="btn" type="submit">Enter</button>
+    </form>
     <p id="gate-error" style="color:var(--danger);font-size:0.85rem;"></p>
   </div>
 
@@ -439,6 +441,18 @@
     const dropdown = document.getElementById("player-suggestions");
     dropdown.hidden = true;
     dropdown.innerHTML = "";
+  }
+
+  // Stay logged in across reloads: if a password is already cached from a
+  // prior visit, skip the gate entirely (same trust model as checkPassword —
+  // the server is still the real check on every write). Otherwise put the
+  // cursor straight in the password field.
+  if (localStorage.getItem("hmc_admin_password")) {
+    document.getElementById("gate").style.display = "none";
+    document.getElementById("admin-content").style.display = "block";
+    initAdmin();
+  } else {
+    document.getElementById("gate-password").focus();
   }
 </script>
 </body>
