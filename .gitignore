@@ -2,3 +2,4 @@
 .env
 CLAUDE.md
 .vercel
+.claude/worktrees/
