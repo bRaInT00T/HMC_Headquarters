@@ -11,7 +11,7 @@
 <body>
 <header class="site-header">
   <div class="brand">
-    <img src="assets/logo.png" alt="The Handsome Men's Club" class="logo" />
+    <a href="index.html" class="brand-home" aria-label="HMC Fantasy Football home"><img src="assets/logo.png" alt="The Handsome Men's Club" class="logo" /></a>
     <span class="sub">Commissioner Admin</span>
   </div>
   <nav class="site-nav">
@@ -106,7 +106,9 @@
 
     <section class="rules-section">
       <h2>5. Record a Pick Manually</h2>
-      <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.</p>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.
+        Position and NFL Team narrow the player-name autocomplete. Position lists our roster slots, not raw NFL positions —
+        W/R/T spans WR, RB and TE, and DEF offers the 32 team defenses by name (individual defenders aren't draftable).</p>
       <form class="pick-form" onsubmit="return false;">
         <div>
           <label>Round</label>
@@ -123,11 +125,20 @@
         </div>
         <div>
           <label>Position</label>
-          <input id="pick-position" type="text" placeholder="e.g. WR" />
+          <select id="pick-position">
+            <option value="">All skill positions</option>
+            <option value="QB">QB — Quarterback</option>
+            <option value="RB">RB — Running Back</option>
+            <option value="WR">WR — Wide Receiver</option>
+            <option value="TE">TE — Tight End</option>
+            <option value="W/R/T">W/R/T — WR / RB / TE</option>
+            <option value="K">K — Kicker</option>
+            <option value="DEF">DEF — Defense</option>
+          </select>
         </div>
         <div>
           <label>NFL Team</label>
-          <input id="pick-nflteam" type="text" placeholder="e.g. CIN" />
+          <select id="pick-nflteam"><option value="">Any NFL team</option></select>
         </div>
         <div class="full-row">
           <button class="btn" onclick="submitPick()">Add Pick</button>
@@ -183,6 +194,7 @@
 
   async function initAdmin() {
     wirePlayerAutocomplete();
+    loadPlayerFilterOptions(); // constants only — must not wait on Supabase, or hide behind its failure paths
     sb = getSupabaseClient();
     if (new URLSearchParams(location.search).get("yahoo") === "connected") {
       document.getElementById("yahoo-status").textContent = "Yahoo account connected.";
@@ -475,8 +487,16 @@
       const round = Number(document.getElementById("pick-round").value);
       const slot = Number(document.getElementById("pick-slot").value);
       const player = document.getElementById("pick-player").value.trim();
-      const position = document.getElementById("pick-position").value.trim();
-      const nflTeam = document.getElementById("pick-nflteam").value.trim();
+      // Position/NFL Team are autocomplete filters, so they may be left on
+      // "Any" — prefer the picked player's own values when we have them.
+      const matched = selectedPlayer && selectedPlayer.name === player ? selectedPlayer : null;
+      // Falling back to the filter only works when it names one position —
+      // "W/R/T" spans three, so a free-typed name under it records no position.
+      const slotFilter = document.getElementById("pick-position").value;
+      const position = matched
+        ? matched.position || ""
+        : slotFilter === "W/R/T" ? "" : slotFilter;
+      const nflTeam = matched ? matched.nflTeam || "" : document.getElementById("pick-nflteam").value;
       if (!round || !slot || !player) {
         status.textContent = "Round, team, and player are required.";
         status.className = "status-msg err";
@@ -487,8 +507,7 @@
         round, slot, player, position, nflTeam, team, numTeams: currentConfig.teams.length
       });
       document.getElementById("pick-player").value = "";
-      document.getElementById("pick-position").value = "";
-      document.getElementById("pick-nflteam").value = "";
+      selectedPlayer = null; // the filters stay put — handy for entering several picks in a row
       status.textContent = `Saved pick #${result.overallPick}.`;
       status.className = "status-msg ok";
     } catch (e) {
@@ -509,11 +528,47 @@
     }
   }
 
+  // Our roster slots, mapped to the raw NFL positions balldontlie stores in
+  // nfl_players. Kickers come across as "PK" (K is listed too in case a future
+  // sync source uses it); fullbacks are RB-eligible for fantasy purposes.
+  // DEF is deliberately absent — team defenses aren't rows in nfl_players and
+  // are handled by teamDefenseSuggestions() instead.
+  const ROSTER_SLOT_POSITIONS = {
+    QB: ["QB"],
+    RB: ["RB", "FB"],
+    WR: ["WR"],
+    TE: ["TE"],
+    "W/R/T": ["WR", "RB", "FB", "TE"],
+    K: ["PK", "K"]
+  };
+
+  // Every position that can be drafted as an individual player. Used as the
+  // floor on every autocomplete query, so defenders (CB/LB/S/DE/DT), linemen
+  // and special-teamers can never be picked — a defense is drafted as a team,
+  // not as its players. It also filters out the ~8k retired players
+  // balldontlie returns with position "UNK".
+  const DRAFTABLE_POSITIONS = [...new Set(Object.values(ROSTER_SLOT_POSITIONS).flat())];
+
+  const NFL_TEAM_NAMES = {
+    ARI: "Arizona Cardinals", ATL: "Atlanta Falcons", BAL: "Baltimore Ravens",
+    BUF: "Buffalo Bills", CAR: "Carolina Panthers", CHI: "Chicago Bears",
+    CIN: "Cincinnati Bengals", CLE: "Cleveland Browns", DAL: "Dallas Cowboys",
+    DEN: "Denver Broncos", DET: "Detroit Lions", GB: "Green Bay Packers",
+    HOU: "Houston Texans", IND: "Indianapolis Colts", JAX: "Jacksonville Jaguars",
+    KC: "Kansas City Chiefs", LAC: "Los Angeles Chargers", LAR: "Los Angeles Rams",
+    LV: "Las Vegas Raiders", MIA: "Miami Dolphins", MIN: "Minnesota Vikings",
+    NE: "New England Patriots", NO: "New Orleans Saints", NYG: "New York Giants",
+    NYJ: "New York Jets", PHI: "Philadelphia Eagles", PIT: "Pittsburgh Steelers",
+    SEA: "Seattle Seahawks", SF: "San Francisco 49ers", TB: "Tampa Bay Buccaneers",
+    TEN: "Tennessee Titans", WSH: "Washington Commanders"
+  };
+
   let playerSuggestions = [];
   let playerSuggestionIndex = -1;
   let playerSearchTimer = null;
   let playerAutocompleteWired = false;
   let playerSearchSeq = 0;
+  let selectedPlayer = null;
 
   function wirePlayerAutocomplete() {
     if (playerAutocompleteWired) return;
@@ -523,13 +578,16 @@
     const dropdown = document.getElementById("player-suggestions");
 
     input.addEventListener("input", () => {
-      clearTimeout(playerSearchTimer);
-      const q = input.value.trim();
-      if (q.length < 2) {
-        hidePlayerSuggestions();
-        return;
-      }
-      playerSearchTimer = setTimeout(() => searchPlayers(q), 300);
+      selectedPlayer = null;
+      queuePlayerSearch(300);
+    });
+
+    // Changing a filter re-runs the current search so the list narrows in place.
+    ["pick-position", "pick-nflteam"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", () => {
+        selectedPlayer = null;
+        queuePlayerSearch(0);
+      });
     });
 
     input.addEventListener("keydown", (e) => {
@@ -557,20 +615,77 @@
     });
   }
 
+  function playerFilters() {
+    return {
+      position: document.getElementById("pick-position").value,
+      nflTeam: document.getElementById("pick-nflteam").value
+    };
+  }
+
+  // With a position/team filter on, an empty box is a useful query (browse the
+  // whole filtered list); with no filter it would mean "every NFL player".
+  function queuePlayerSearch(delayMs) {
+    clearTimeout(playerSearchTimer);
+    const q = document.getElementById("pick-player").value.trim();
+    const { position, nflTeam } = playerFilters();
+    if (q.length < 2 && !position && !nflTeam) {
+      hidePlayerSuggestions();
+      return;
+    }
+    if (delayMs) playerSearchTimer = setTimeout(() => searchPlayers(q), delayMs);
+    else searchPlayers(q);
+  }
+
+  // The NFL is a fixed 32 teams and Position is now a fixed list of our roster
+  // slots, so both dropdowns are built from constants rather than discovered by
+  // paging the 13k-row nfl_players table. Values stay abbreviations (what the
+  // `team` column holds); labels are the full names.
+  function loadPlayerFilterOptions() {
+    const select = document.getElementById("pick-nflteam");
+    const previous = select.value;
+    select.innerHTML =
+      `<option value="">Any NFL team</option>` +
+      Object.entries(NFL_TEAM_NAMES)
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([abbr, name]) => `<option value="${escapeHtml(abbr)}">${escapeHtml(name)}</option>`)
+        .join("");
+    if (NFL_TEAM_NAMES[previous]) select.value = previous;
+  }
+
+  // The 32 team defenses, drafted by full team name rather than as individual
+  // defenders. Not backed by nfl_players, so this is matched in memory.
+  function teamDefenseSuggestions(q, nflTeam) {
+    const needle = q.toLowerCase();
+    return Object.entries(NFL_TEAM_NAMES)
+      .filter(([abbr, name]) => (!nflTeam || abbr === nflTeam) && (!needle || name.toLowerCase().includes(needle)))
+      .map(([abbr, name]) => ({ name, position: "DEF", nflTeam: abbr }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   async function searchPlayers(q) {
     const seq = ++playerSearchSeq;
     try {
       const alreadyDrafted = new Set((currentPicks || []).map((p) => (p.player || "").toLowerCase()));
-      const { data, error } = await sb
-        .from("nfl_players")
-        .select("full_name, position, team")
-        .ilike("full_name", `%${q}%`)
-        .limit(10);
-      if (error) throw error;
-      if (seq !== playerSearchSeq) return; // a newer search superseded this one; discard stale response
-      playerSuggestions = (data || [])
-        .filter((p) => !alreadyDrafted.has(p.full_name.toLowerCase()))
-        .map((p) => ({ name: p.full_name, position: p.position, nflTeam: p.team }));
+      const { position, nflTeam } = playerFilters();
+
+      let results;
+      if (position === "DEF") {
+        results = teamDefenseSuggestions(q, nflTeam);
+      } else {
+        // Always constrain to draftable positions, even on "All skill
+        // positions" — individual defenders are never a valid pick.
+        const positions = ROSTER_SLOT_POSITIONS[position] || DRAFTABLE_POSITIONS;
+        let query = sb.from("nfl_players").select("full_name, position, team").in("position", positions);
+        if (q) query = query.ilike("full_name", `%${q}%`);
+        if (nflTeam) query = query.eq("team", nflTeam);
+        const { data, error } = await query.order("full_name").limit(25);
+        if (error) throw error;
+        if (seq !== playerSearchSeq) return; // a newer search superseded this one; discard stale response
+        results = (data || []).map((p) => ({ name: p.full_name, position: p.position, nflTeam: p.team }));
+      }
+
+      if (seq !== playerSearchSeq) return;
+      playerSuggestions = results.filter((p) => !alreadyDrafted.has(p.name.toLowerCase()));
       playerSuggestionIndex = -1;
       renderPlayerSuggestions();
     } catch (e) {
@@ -598,14 +713,19 @@
     dropdown.querySelectorAll(".search-result").forEach((el) => {
       el.addEventListener("click", () => selectPlayerSuggestion(Number(el.dataset.index)));
     });
+    // The filtered list can be longer than the dropdown is tall — keep the
+    // arrow-key selection visible.
+    const active = dropdown.querySelector(".search-result.active");
+    if (active) active.scrollIntoView({ block: "nearest" });
   }
 
   function selectPlayerSuggestion(index) {
     const p = playerSuggestions[index];
     if (!p) return;
     document.getElementById("pick-player").value = p.name;
-    document.getElementById("pick-position").value = p.position || "";
-    document.getElementById("pick-nflteam").value = p.nflTeam || "";
+    // The dropdowns stay as filters; the chosen player's own position/team ride
+    // along in selectedPlayer and are what submitPick sends.
+    selectedPlayer = p;
     hidePlayerSuggestions();
   }
 

@@ -10,7 +10,7 @@
 <body>
 <header class="site-header">
   <div class="brand">
-    <img src="assets/logo.png" alt="The Handsome Men's Club" class="logo" />
+    <a href="index.html" class="brand-home" aria-label="HMC Fantasy Football home"><img src="assets/logo.png" alt="The Handsome Men's Club" class="logo" /></a>
     <span class="sub">Fantasy Football League</span>
   </div>
   <nav class="site-nav">
@@ -35,6 +35,17 @@
 
   <div class="draft-meta" id="draft-meta"></div>
 
+  <section class="available-players">
+    <h2>Who's still available?</h2>
+    <div class="available-controls">
+      <input type="search" id="avail-query" placeholder="Search players…" autocomplete="off" />
+      <select id="avail-position"><option value="">Any position</option></select>
+      <select id="avail-team"><option value="">Any NFL team</option></select>
+    </div>
+    <p class="available-status" id="avail-status">Type a name, or pick a position/team, to see who hasn't been drafted yet.</p>
+    <div class="available-results" id="avail-results" hidden></div>
+  </section>
+
   <div class="board-wrap">
     <div id="board">Loading draft board…</div>
   </div>
@@ -56,6 +67,7 @@
 <script>
   let sb = null;
   let config = null;
+  let currentPicks = [];
 
   function toBoardConfig(row) {
     return { rounds: row.rounds, teams: row.teams };
@@ -83,6 +95,7 @@
 
     const row = cfgRows[0];
     config = toBoardConfig(row);
+    currentPicks = picks || [];
 
     document.getElementById("draft-meta").innerHTML = `
       <div><strong>Season</strong><br>${escapeHtml(row.season)}</div>
@@ -90,8 +103,146 @@
       <div><strong>Format</strong><br>${escapeHtml(row.format)} · ${row.rounds} rounds</div>
     `;
 
-    renderBoard("board", config, picks, {
+    renderBoard("board", config, currentPicks, {
       onRendered: ({ picksMade, totalPicks, onClock }) => updateStatus(picksMade, totalPicks, onClock, config.teams)
+    });
+
+    // A pick just landed — re-run the current query so the drafted player
+    // drops out of the available list without the user retyping.
+    if (availQuerySeq > 0) runAvailableSearch();
+  }
+
+  // ── Available-player search ───────────────────────────────────────────────
+  // Reads the public nfl_players cache (the same table admin.html's pick-entry
+  // autocomplete uses) and subtracts anyone already on the board.
+  const AVAIL_RESULT_LIMIT = 40;
+  let availQuerySeq = 0;
+  let availDebounce = null;
+  let availFiltersLoaded = false;
+
+  function availInputs() {
+    return {
+      q: document.getElementById("avail-query").value.trim(),
+      position: document.getElementById("avail-position").value,
+      team: document.getElementById("avail-team").value
+    };
+  }
+
+  function setAvailStatus(text) {
+    document.getElementById("avail-status").textContent = text;
+  }
+
+  function renderAvailable(players, truncated) {
+    const results = document.getElementById("avail-results");
+    if (!players.length) {
+      results.hidden = true;
+      results.innerHTML = "";
+      setAvailStatus("No available players match that.");
+      return;
+    }
+    results.innerHTML = players
+      .map(
+        (p) => `<div class="available-row">
+          <span class="name">${escapeHtml(p.full_name)}</span>
+          <span class="meta">${escapeHtml(p.position || "")}${p.team ? " · " + escapeHtml(p.team) : ""}</span>
+        </div>`
+      )
+      .join("");
+    results.hidden = false;
+    setAvailStatus(
+      truncated
+        ? `Showing the first ${players.length} matches — keep typing to narrow it down.`
+        : `${players.length} available player${players.length === 1 ? "" : "s"}.`
+    );
+  }
+
+  async function runAvailableSearch() {
+    const { q, position, team } = availInputs();
+    const results = document.getElementById("avail-results");
+
+    if (!q && !position && !team) {
+      availQuerySeq++;
+      results.hidden = true;
+      results.innerHTML = "";
+      setAvailStatus("Type a name, or pick a position/team, to see who hasn't been drafted yet.");
+      return;
+    }
+
+    const seq = ++availQuerySeq;
+    try {
+      const drafted = new Set(currentPicks.map((p) => (p.player || "").toLowerCase()));
+      let query = sb.from("nfl_players").select("full_name, position, team");
+      if (q) query = query.ilike("full_name", `%${q}%`);
+      if (position) query = query.eq("position", position);
+      if (team) query = query.eq("team", team);
+      // Over-fetch by one so a full page can be reported as truncated, and
+      // because drafted players are subtracted client-side.
+      const { data, error } = await query.order("full_name").limit(AVAIL_RESULT_LIMIT + 1);
+      if (error) throw error;
+      if (seq !== availQuerySeq) return; // a newer query superseded this one
+
+      const available = (data || []).filter((p) => !drafted.has((p.full_name || "").toLowerCase()));
+      const truncated = available.length > AVAIL_RESULT_LIMIT;
+      renderAvailable(available.slice(0, AVAIL_RESULT_LIMIT), truncated);
+    } catch (e) {
+      if (seq !== availQuerySeq) return;
+      results.hidden = true;
+      setAvailStatus("Player search is unavailable right now: " + e.message);
+    }
+  }
+
+  // Populate the Position / NFL Team dropdowns from what's actually in
+  // nfl_players, so neither can offer a value that matches nobody. Deferred
+  // until the user first touches the search box — it's several thousand rows
+  // and shouldn't slow down the board itself. PostgREST caps a response at
+  // 1000 rows, so page through.
+  async function loadAvailableFilters() {
+    if (availFiltersLoaded) return;
+    availFiltersLoaded = true;
+    try {
+      const positions = new Set();
+      const teams = new Set();
+      const pageSize = 1000;
+      for (let from = 0; from < 10000; from += pageSize) {
+        const { data, error } = await sb
+          .from("nfl_players")
+          .select("position, team")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        (data || []).forEach((p) => {
+          if (p.position) positions.add(p.position);
+          if (p.team) teams.add(p.team);
+        });
+        if (!data || data.length < pageSize) break;
+      }
+      fillAvailSelect("avail-position", [...positions].sort(), "Any position");
+      fillAvailSelect("avail-team", [...teams].sort(), "Any NFL team");
+    } catch (e) {
+      availFiltersLoaded = false; // let a later focus retry
+      console.warn("Could not load player filter options:", e.message);
+    }
+  }
+
+  function fillAvailSelect(id, values, anyLabel) {
+    const select = document.getElementById(id);
+    const previous = select.value;
+    select.innerHTML =
+      `<option value="">${anyLabel}</option>` +
+      values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+    if (values.includes(previous)) select.value = previous;
+  }
+
+  function wireAvailableSearch() {
+    const input = document.getElementById("avail-query");
+    input.addEventListener("focus", loadAvailableFilters);
+    input.addEventListener("input", () => {
+      clearTimeout(availDebounce);
+      availDebounce = setTimeout(runAvailableSearch, 200);
+    });
+    ["avail-position", "avail-team"].forEach((id) => {
+      const select = document.getElementById(id);
+      select.addEventListener("focus", loadAvailableFilters);
+      select.addEventListener("change", runAvailableSearch);
     });
   }
 
@@ -102,8 +253,11 @@
         This board isn't connected to its database yet. Set SUPABASE_URL / SUPABASE_ANON_KEY in
         <code>js/config.js</code> (see README.md).
       </p>`;
+      // Nothing to search against without a database connection.
+      document.querySelector(".available-players").hidden = true;
       return;
     }
+    wireAvailableSearch();
     try {
       await loadAndRender();
     } catch (e) {
