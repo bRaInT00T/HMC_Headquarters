@@ -40,13 +40,18 @@ header.site-header {
   gap: 10px;
 }
 
+.brand-home {
+  display: inline-flex;
+  line-height: 0;
+  border-radius: 50%;
+}
+
 .brand .logo {
   height: 48px;
   width: 48px;
   object-fit: cover;
   border-radius: 50%;
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 0 3px var(--bg), 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .brand .sub {
@@ -257,17 +262,22 @@ main {
   padding: 40px 0 24px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 32px;
   flex-wrap: wrap;
 }
 
 .hero-logo-col {
   flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .hero-logo {
-  height: 180px;
-  width: 180px;
+  height: 360px;
+  width: 360px;
+  max-width: 100%;
   object-fit: cover;
   border-radius: 50%;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -275,6 +285,11 @@ main {
 
 .hero-text-col {
   min-width: 0;
+  text-align: center;
+}
+
+.hero p {
+  margin-inline: auto;
 }
 
 .hero h1 {
@@ -286,6 +301,23 @@ main {
 .hero p {
   color: var(--text-dim);
   max-width: 640px;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding-top: 24px;
+    gap: 20px;
+  }
+
+  .hero-logo {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .hero h1 {
+    font-size: 2.2rem;
+  }
 }
 
 .card-grid {
