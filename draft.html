@@ -50,6 +50,15 @@
     <div id="board">Loading draft board…</div>
   </div>
 
+  <div class="pick-announce" id="pick-announce" hidden>
+    <img class="commish" id="announce-commish" src="assets/commish00.png" alt="" />
+    <div class="card">
+      <div class="eyebrow">The commissioner is at the podium</div>
+      <div class="line" id="announce-line"></div>
+      <div class="dismiss">Click anywhere to dismiss</div>
+    </div>
+  </div>
+
   <div class="note-box">
     This board updates instantly — no need to refresh. It's subscribed live to the same database the
     commissioner's <a href="admin.html">admin page</a> (and Yahoo sync) write picks into.
@@ -68,6 +77,7 @@
   let sb = null;
   let config = null;
   let currentPicks = [];
+  let seasonYear = String(new Date().getFullYear());
 
   function toBoardConfig(row) {
     // traded_picks and clock_state are columns the board renderer reads directly
@@ -104,6 +114,12 @@
     const row = cfgRows[0];
     config = toBoardConfig(row);
     currentPicks = picks || [];
+    // season is free text ("2026", "2026 Season", …) — the announcement wants
+    // just the year, and falls back to the calendar year if there isn't one.
+    const seasonMatch = String(row.season || "").match(/\d{4}/);
+    if (seasonMatch) seasonYear = seasonMatch[0];
+
+    queueAnnouncements(currentPicks);
 
     document.getElementById("draft-meta").innerHTML = `
       <div><strong>Season</strong><br>${escapeHtml(row.season)}</div>
@@ -118,6 +134,184 @@
     // A pick just landed — re-run the current query so the drafted player
     // drops out of the available list without the user retyping.
     if (availQuerySeq > 0) runAvailableSearch();
+  }
+
+  // ── Pick announcement ─────────────────────────────────────────────────────
+  // When a pick lands, the commissioner reads it out: two frames alternate
+  // (mouth closed / mouth open) while the sentence types itself, and the
+  // alternating stops — parked on the closed-mouth frame — the instant the
+  // typing finishes.
+  const ANNOUNCE_FRAMES = ["assets/commish00.png", "assets/commish01.png"];
+  const TYPE_MS = 32;      // per character
+  const MOUTH_MS = 130;    // frame swap while talking
+  const HOLD_MS = 3500;    // how long the finished sentence stays up
+  const FADE_MS = 450;     // matches the .leaving animation in style.css
+
+  // draft_picks.nfl_team holds the abbreviation Yahoo uses; "from the Buffalo
+  // Bills" reads better out loud than "from the BUF". Anything unrecognised
+  // (or already spelled out) is announced as-is.
+  const NFL_TEAM_NAMES = {
+    ARI: "Arizona Cardinals", ATL: "Atlanta Falcons", BAL: "Baltimore Ravens",
+    BUF: "Buffalo Bills", CAR: "Carolina Panthers", CHI: "Chicago Bears",
+    CIN: "Cincinnati Bengals", CLE: "Cleveland Browns", DAL: "Dallas Cowboys",
+    DEN: "Denver Broncos", DET: "Detroit Lions", GB: "Green Bay Packers",
+    HOU: "Houston Texans", IND: "Indianapolis Colts", JAX: "Jacksonville Jaguars",
+    JAC: "Jacksonville Jaguars", KC: "Kansas City Chiefs", LV: "Las Vegas Raiders",
+    LAC: "Los Angeles Chargers", LAR: "Los Angeles Rams", MIA: "Miami Dolphins",
+    MIN: "Minnesota Vikings", NE: "New England Patriots", NO: "New Orleans Saints",
+    NYG: "New York Giants", NYJ: "New York Jets", PHI: "Philadelphia Eagles",
+    PIT: "Pittsburgh Steelers", SF: "San Francisco 49ers", SEA: "Seattle Seahawks",
+    TB: "Tampa Bay Buccaneers", TEN: "Tennessee Titans", WAS: "Washington Commanders",
+    WSH: "Washington Commanders"
+  };
+
+  const announceQueue = [];
+  const announcedOverall = new Set();
+  let announceSeeded = false;
+  let announcing = false;
+  let announceTimers = [];
+  let mouthTimer = null;
+  let typeTimer = null;
+
+  function ordinal(n) {
+    // 11th/12th/13th are the exceptions to the last-digit rule.
+    const teen = n % 100;
+    if (teen >= 11 && teen <= 13) return `${n}th`;
+    return n + ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
+  }
+
+  function teamNameForPick(pick) {
+    if (pick.team) return pick.team;
+    const team = (config.teams || []).find((t) => t.slot === pick.slot);
+    return team ? team.owner : `Slot ${pick.slot}`;
+  }
+
+  function nflTeamName(abbr) {
+    const key = String(abbr || "").toUpperCase();
+    return NFL_TEAM_NAMES[key] || abbr || "";
+  }
+
+  // The sentence, split so the player's name can be highlighted while still
+  // typing as one continuous string.
+  function announceSegments(pick) {
+    const nfl = nflTeamName(pick.nfl_team);
+    let lead = `With the ${ordinal(pick.overall_pick)} pick of the ${seasonYear} Handsome Men's Club draft, ` +
+      `${teamNameForPick(pick)} select ${pick.position || "a player"}`;
+    if (nfl) lead += ` from the ${nfl}`;
+    return [
+      { text: lead + ", ", cls: "" },
+      { text: pick.player || "—", cls: "player" }
+    ];
+  }
+
+  // The first load is the page catching up on picks already made, not news —
+  // seed them so a viewer opening mid-draft doesn't get the whole board read
+  // back to them. Keepers are pre-draft bookkeeping and never announced.
+  function queueAnnouncements(picks) {
+    const fresh = picks
+      .filter((p) => p.source !== "keeper" && !announcedOverall.has(p.overall_pick))
+      .sort((a, b) => a.overall_pick - b.overall_pick);
+    fresh.forEach((p) => announcedOverall.add(p.overall_pick));
+    if (!announceSeeded) {
+      announceSeeded = true;
+      return;
+    }
+    announceQueue.push(...fresh);
+    if (!announcing) playNextAnnouncement();
+  }
+
+  function clearAnnounceTimers() {
+    announceTimers.forEach((t) => clearTimeout(t));
+    clearInterval(mouthTimer);
+    clearInterval(typeTimer);
+    announceTimers = [];
+  }
+
+  function hideAnnouncement() {
+    const overlay = document.getElementById("pick-announce");
+    clearAnnounceTimers();
+    overlay.classList.add("leaving");
+    announceTimers.push(
+      setTimeout(() => {
+        overlay.hidden = true;
+        overlay.classList.remove("leaving");
+        announcing = false;
+        playNextAnnouncement();
+      }, FADE_MS)
+    );
+  }
+
+  function playNextAnnouncement() {
+    const pick = announceQueue.shift();
+    if (!pick) return;
+
+    announcing = true;
+    const overlay = document.getElementById("pick-announce");
+    const line = document.getElementById("announce-line");
+    const commish = document.getElementById("announce-commish");
+    const segments = announceSegments(pick);
+    const full = segments.reduce((n, s) => n + s.text.length, 0);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    clearAnnounceTimers();
+    overlay.classList.remove("leaving");
+    overlay.hidden = false;
+
+    const render = (shown, done) => {
+      let left = shown;
+      line.innerHTML =
+        segments
+          .map((s) => {
+            const take = Math.max(0, Math.min(s.text.length, left));
+            left -= s.text.length;
+            if (!take) return "";
+            const chunk = escapeHtml(s.text.slice(0, take));
+            return s.cls ? `<span class="${s.cls}">${chunk}</span>` : chunk;
+          })
+          .join("") + `<span class="caret${done ? " done" : ""}">&nbsp;</span>`;
+    };
+
+    const finish = () => {
+      clearInterval(typeTimer);
+      clearInterval(mouthTimer);
+      // Mouth shut, the sentence is delivered — this is the "stop" the whole
+      // animation is timed against.
+      commish.src = ANNOUNCE_FRAMES[0];
+      render(full, true);
+      announceTimers.push(setTimeout(hideAnnouncement, HOLD_MS));
+    };
+
+    if (reduceMotion) {
+      finish();
+      return;
+    }
+
+    render(0, false);
+    let frame = 0;
+    mouthTimer = setInterval(() => {
+      frame = (frame + 1) % ANNOUNCE_FRAMES.length;
+      commish.src = ANNOUNCE_FRAMES[frame];
+    }, MOUTH_MS);
+
+    let shown = 0;
+    typeTimer = setInterval(() => {
+      shown++;
+      render(shown, false);
+      if (shown >= full) finish();
+    }, TYPE_MS);
+  }
+
+  function wireAnnouncement() {
+    // Preload both frames so the first mouth swap isn't a blank flash.
+    ANNOUNCE_FRAMES.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+    const overlay = document.getElementById("pick-announce");
+    overlay.addEventListener("click", hideAnnouncement);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !overlay.hidden) hideAnnouncement();
+    });
   }
 
   // ── Available-player search ───────────────────────────────────────────────
@@ -266,6 +460,7 @@
       return;
     }
     wireAvailableSearch();
+    wireAnnouncement();
     try {
       await loadAndRender();
     } catch (e) {
