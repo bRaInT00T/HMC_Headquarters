@@ -105,68 +105,7 @@
     </section>
 
     <section class="rules-section">
-      <h2>5. Record a Pick Manually</h2>
-      <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.
-        Position and NFL Team narrow the player-name autocomplete, and fill in on their own once you pick a player from the
-        list. Position lists our roster slots, not raw NFL positions — W/R/T spans WR, RB and TE, and DEF offers the 32 team
-        defenses by name (individual defenders aren't draftable). The form opens on whichever pick is on the clock and
-        advances in snake order after each save (stepping back on Undo). To correct an earlier pick, set Pick # to it —
-        Round, Team and the recorded player load in, and saving overwrites that pick rather than appending a new one.</p>
-      <form class="pick-form" onsubmit="return false;">
-        <!-- Pick # and Round are 2-3 digits; Team takes the rest of the line. -->
-        <div class="pick-row pick-row-lead">
-          <div>
-            <label>Pick #</label>
-            <input id="pick-number" type="number" min="1" />
-          </div>
-          <div>
-            <label>Round</label>
-            <input id="pick-round" type="number" min="1" />
-          </div>
-          <div>
-            <label>Team (Owner)</label>
-            <select id="pick-slot"></select>
-          </div>
-        </div>
-        <!-- The player fields share a row of their own, below Pick #/Round/Team. -->
-        <div class="pick-row">
-          <div class="player-autocomplete">
-            <label>Player Name</label>
-            <input id="pick-player" type="text" placeholder="e.g. Ja'Marr Chase" autocomplete="off" />
-            <div id="player-suggestions" class="search-results" hidden></div>
-          </div>
-          <div>
-            <label>Position</label>
-            <select id="pick-position">
-              <option value="">All skill positions</option>
-              <option value="QB">QB — Quarterback</option>
-              <option value="RB">RB — Running Back</option>
-              <option value="WR">WR — Wide Receiver</option>
-              <option value="TE">TE — Tight End</option>
-              <option value="W/R/T">W/R/T — WR / RB / TE</option>
-              <option value="K">K — Kicker</option>
-              <option value="DEF">DEF — Defense</option>
-            </select>
-          </div>
-          <div>
-            <label>NFL Team</label>
-            <select id="pick-nflteam"><option value="">Any NFL team</option></select>
-          </div>
-        </div>
-        <div class="full-row">
-          <button class="btn" onclick="submitPick()">Add Pick</button>
-          <button class="btn secondary" onclick="undoLastPick()">Undo Last Pick</button>
-          <span class="clock-controls">
-            <button class="btn secondary" id="clock-toggle" onclick="togglePickClock()">Pause Clock</button>
-            <button class="btn secondary" onclick="resetPickClock()">Reset Clock</button>
-          </span>
-        </div>
-      </form>
-      <p id="pick-status" class="status-msg"></p>
-    </section>
-
-    <section class="rules-section">
-      <h2>6. Keepers &amp; Traded Picks</h2>
+      <h2>5. Keepers &amp; Traded Picks</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Set these <em>before</em> draft day. A keeper is recorded as
         that team's pick in the round the rules assign it (prior-season round, after any Bump Up), so it fills its cell on
         the board and the draft skips over it. A traded pick keeps its place in the snake order — only the team making it
@@ -251,7 +190,71 @@
     </section>
 
     <section class="rules-section">
-      <h2>Live Preview</h2>
+      <h2>6. Record a Pick Manually</h2>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.
+        Position and NFL Team narrow the player-name autocomplete, and fill in on their own once you pick a player from the
+        list. Position lists our roster slots, not raw NFL positions — W/R/T spans WR, RB and TE, and DEF offers the 32 team
+        defenses by name (individual defenders aren't draftable). The form opens on whichever pick is on the clock and
+        advances in snake order after each save (stepping back on Undo). To correct an earlier pick, set Pick # to it —
+        Round, Team and the recorded player load in, and saving overwrites that pick rather than appending a new one.</p>
+      <form class="pick-form" onsubmit="return false;">
+        <!-- Pick # and Round are 2-3 digits; Team takes the rest of the line. -->
+        <div class="pick-row pick-row-lead">
+          <div>
+            <label>Pick #</label>
+            <input id="pick-number" type="number" min="1" />
+          </div>
+          <div>
+            <label>Round</label>
+            <input id="pick-round" type="number" min="1" />
+          </div>
+          <div>
+            <label>Team (Owner)</label>
+            <select id="pick-slot"></select>
+          </div>
+        </div>
+        <!-- The player fields share a row of their own, below Pick #/Round/Team. -->
+        <div class="pick-row">
+          <div class="player-autocomplete">
+            <label>Player Name</label>
+            <input id="pick-player" type="text" placeholder="e.g. Ja'Marr Chase" autocomplete="off" />
+            <div id="player-suggestions" class="search-results" hidden></div>
+          </div>
+          <div>
+            <label>Position</label>
+            <select id="pick-position">
+              <option value="">All skill positions</option>
+              <option value="QB">QB — Quarterback</option>
+              <option value="RB">RB — Running Back</option>
+              <option value="WR">WR — Wide Receiver</option>
+              <option value="TE">TE — Tight End</option>
+              <option value="W/R/T">W/R/T — WR / RB / TE</option>
+              <option value="K">K — Kicker</option>
+              <option value="DEF">DEF — Defense</option>
+            </select>
+          </div>
+          <div>
+            <label>NFL Team</label>
+            <select id="pick-nflteam"><option value="">Any NFL team</option></select>
+          </div>
+        </div>
+        <div class="full-row">
+          <button class="btn" onclick="submitPick()">Add Pick</button>
+          <button class="btn secondary" onclick="undoLastPick()">Undo Last Pick</button>
+        </div>
+      </form>
+      <p id="pick-status" class="status-msg"></p>
+    </section>
+
+    <section class="rules-section">
+      <!-- The clock controls live with the board they act on, not with the pick form. -->
+      <div class="preview-head">
+        <h2>Live Preview</h2>
+        <span class="clock-controls">
+          <button class="btn secondary" id="clock-toggle" onclick="togglePickClock()">Pause Clock</button>
+          <button class="btn secondary" onclick="resetPickClock()">Reset Clock</button>
+        </span>
+      </div>
       <div class="board-wrap"><div id="board">Loading…</div></div>
     </section>
   </div>

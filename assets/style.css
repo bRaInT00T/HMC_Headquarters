@@ -725,17 +725,17 @@ form.pick-form input, form.pick-form select {
 }
 form.pick-form .full-row { grid-column: 1 / -1; display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
 
-/* Clock controls sit apart from the pick actions — they don't record anything. */
-form.pick-form .clock-controls {
+/* Clock controls ride along the Live Preview heading — they act on the board, not the form. */
+.preview-head {
   display: flex;
-  gap: 10px;
-  margin-left: auto;
-  padding-left: 14px;
-  border-left: 1px solid var(--border);
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
-@media (max-width: 640px) {
-  form.pick-form .clock-controls { margin-left: 0; padding-left: 0; border-left: none; }
-}
+.preview-head h2 { margin-bottom: 0; }
+.preview-head .clock-controls { display: flex; gap: 10px; }
 
 /* A break in the auto-flow: takes the full width and lays its own fields out on
    the same column rhythm, so the group always starts on a fresh line. */
