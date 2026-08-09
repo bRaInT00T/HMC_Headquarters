@@ -319,7 +319,9 @@
   // form rather than passed in, because the form and the board have to agree
   // about which pick is loaded no matter which of them moved last.
   function refreshBoard() {
-    if (!currentConfig || !currentPicks) return;
+    // renderBoard() tolerates a null/undefined picks array internally
+    // ((picks || []) on every access) — only a missing config is fatal here.
+    if (!currentConfig) return;
     renderBoard("board", currentConfig, currentPicks, {
       onPickClick: editPick,
       editingOverall: Number(document.getElementById("pick-number").value) || null
@@ -364,10 +366,12 @@
     renderKeeperList();
     renderTradeList();
     renderClockControls();
-    // goToPick() refreshes the board itself, so the idle path is already
-    // covered — refreshing again here would rebuild the whole board twice on
-    // every realtime event.
-    if (pickFormInUse) refreshBoard();
+    // goToPick() refreshes the board itself, so the idle path is normally
+    // already covered — refreshing again here would rebuild the whole board
+    // twice on every realtime event. But goToPick() returns early (without
+    // rendering) when there are no teams yet, so that case needs a render
+    // here too or the board is stuck on "Loading..." forever.
+    if (pickFormInUse || !currentConfig.teams.length) refreshBoard();
   }
 
   let yahooTeamOptions = []; // [{ name, manager }], populated by loadYahooTeams()

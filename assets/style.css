@@ -640,6 +640,10 @@ table.board td.pick-cell.editing {
 /* Keepers are recorded before draft day, so they read as settled rather than
    as something that just happened live. */
 table.board td.pick-cell.filled.keeper { background: #1a1a22; }
+/* .clickable:hover and .filled.keeper are the same specificity (0,4,2) and
+   .filled.keeper is declared later, so it would otherwise win the tie and
+   keeper cells would never show hover feedback. */
+table.board td.pick-cell.clickable.keeper:hover { background: #26263a; }
 .keeper-tag {
   color: var(--accent-2);
   font-weight: 700;
