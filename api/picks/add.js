@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
   if (!requireAdmin(req, res)) return;
 
   try {
-    const { round, slot, player, position, nflTeam, team, numTeams } = req.body || {};
+    const { round, slot, player, position, nflTeam, team, numTeams, source } = req.body || {};
     if (!round || !slot || !player || !numTeams) {
       res.status(400).json({ error: "round, slot, player, and numTeams are required." });
       return;
@@ -32,10 +32,21 @@ module.exports = async (req, res) => {
           player,
           position: position || "",
           nfl_team: nflTeam || "",
-          source: "manual"
+          // Only 'keeper' is accepted from the client; anything else is a
+          // normal live pick. Yahoo sync writes 'yahoo' on its own path.
+          source: source === "keeper" ? "keeper" : "manual"
         }
       ]
     });
+
+    // A live pick puts the next team on the clock, so restart it (and clear any
+    // pause). Keepers are entered before draft day and must not touch it.
+    if (source !== "keeper") {
+      await supabaseRequest("draft_config?id=eq.1", {
+        method: "PATCH",
+        body: { clock_state: { startedAt: new Date().toISOString(), pausedAt: null } }
+      });
+    }
 
     res.status(200).json({ overallPick });
   } catch (e) {

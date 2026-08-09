@@ -70,7 +70,15 @@
   let currentPicks = [];
 
   function toBoardConfig(row) {
-    return { rounds: row.rounds, teams: row.teams };
+    // traded_picks and clock_state are columns the board renderer reads directly
+    // — dropping them here would silently lose the "via" labels and the pick
+    // clock's pause/reset state on the public board.
+    return {
+      rounds: row.rounds,
+      teams: row.teams,
+      traded_picks: row.traded_picks || [],
+      clock_state: row.clock_state || {}
+    };
   }
 
   function updateStatus(picksMade, totalPicks, onClock, teams) {

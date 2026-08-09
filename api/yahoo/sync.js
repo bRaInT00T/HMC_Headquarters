@@ -113,7 +113,9 @@ module.exports = async (req, res) => {
       const currentTeams = (cfgRows && cfgRows[0] && cfgRows[0].teams) || [];
       const merged = currentTeams.map((t) => {
         const found = round1.find((p) => p.slot === t.slot);
-        return found ? { slot: t.slot, owner: found.team } : t;
+        // Spread rather than rebuild: Yahoo only knows the team name here, and
+        // rebuilding would drop the hand-entered manager on every sync.
+        return found ? { ...t, slot: t.slot, owner: found.team } : t;
       });
       await supabaseRequest("draft_config?id=eq.1", { method: "PATCH", body: { teams: merged } });
     }

@@ -107,45 +107,147 @@
     <section class="rules-section">
       <h2>5. Record a Pick Manually</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.
-        Position and NFL Team narrow the player-name autocomplete. Position lists our roster slots, not raw NFL positions —
-        W/R/T spans WR, RB and TE, and DEF offers the 32 team defenses by name (individual defenders aren't draftable).</p>
+        Position and NFL Team narrow the player-name autocomplete, and fill in on their own once you pick a player from the
+        list. Position lists our roster slots, not raw NFL positions — W/R/T spans WR, RB and TE, and DEF offers the 32 team
+        defenses by name (individual defenders aren't draftable). The form opens on whichever pick is on the clock and
+        advances in snake order after each save (stepping back on Undo). To correct an earlier pick, set Pick # to it —
+        Round, Team and the recorded player load in, and saving overwrites that pick rather than appending a new one.</p>
       <form class="pick-form" onsubmit="return false;">
-        <div>
-          <label>Round</label>
-          <input id="pick-round" type="number" min="1" />
+        <!-- Pick # and Round are 2-3 digits; Team takes the rest of the line. -->
+        <div class="pick-row pick-row-lead">
+          <div>
+            <label>Pick #</label>
+            <input id="pick-number" type="number" min="1" />
+          </div>
+          <div>
+            <label>Round</label>
+            <input id="pick-round" type="number" min="1" />
+          </div>
+          <div>
+            <label>Team (Owner)</label>
+            <select id="pick-slot"></select>
+          </div>
         </div>
-        <div>
-          <label>Team (slot)</label>
-          <select id="pick-slot"></select>
-        </div>
-        <div class="player-autocomplete">
-          <label>Player Name</label>
-          <input id="pick-player" type="text" placeholder="e.g. Ja'Marr Chase" autocomplete="off" />
-          <div id="player-suggestions" class="search-results" hidden></div>
-        </div>
-        <div>
-          <label>Position</label>
-          <select id="pick-position">
-            <option value="">All skill positions</option>
-            <option value="QB">QB — Quarterback</option>
-            <option value="RB">RB — Running Back</option>
-            <option value="WR">WR — Wide Receiver</option>
-            <option value="TE">TE — Tight End</option>
-            <option value="W/R/T">W/R/T — WR / RB / TE</option>
-            <option value="K">K — Kicker</option>
-            <option value="DEF">DEF — Defense</option>
-          </select>
-        </div>
-        <div>
-          <label>NFL Team</label>
-          <select id="pick-nflteam"><option value="">Any NFL team</option></select>
+        <!-- The player fields share a row of their own, below Pick #/Round/Team. -->
+        <div class="pick-row">
+          <div class="player-autocomplete">
+            <label>Player Name</label>
+            <input id="pick-player" type="text" placeholder="e.g. Ja'Marr Chase" autocomplete="off" />
+            <div id="player-suggestions" class="search-results" hidden></div>
+          </div>
+          <div>
+            <label>Position</label>
+            <select id="pick-position">
+              <option value="">All skill positions</option>
+              <option value="QB">QB — Quarterback</option>
+              <option value="RB">RB — Running Back</option>
+              <option value="WR">WR — Wide Receiver</option>
+              <option value="TE">TE — Tight End</option>
+              <option value="W/R/T">W/R/T — WR / RB / TE</option>
+              <option value="K">K — Kicker</option>
+              <option value="DEF">DEF — Defense</option>
+            </select>
+          </div>
+          <div>
+            <label>NFL Team</label>
+            <select id="pick-nflteam"><option value="">Any NFL team</option></select>
+          </div>
         </div>
         <div class="full-row">
           <button class="btn" onclick="submitPick()">Add Pick</button>
           <button class="btn secondary" onclick="undoLastPick()">Undo Last Pick</button>
+          <span class="clock-controls">
+            <button class="btn secondary" id="clock-toggle" onclick="togglePickClock()">Pause Clock</button>
+            <button class="btn secondary" onclick="resetPickClock()">Reset Clock</button>
+          </span>
         </div>
       </form>
       <p id="pick-status" class="status-msg"></p>
+    </section>
+
+    <section class="rules-section">
+      <h2>6. Keepers &amp; Traded Picks</h2>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Set these <em>before</em> draft day. A keeper is recorded as
+        that team's pick in the round the rules assign it (prior-season round, after any Bump Up), so it fills its cell on
+        the board and the draft skips over it. A traded pick keeps its place in the snake order — only the team making it
+        changes — matching the rule that the acquiring team gets an extra pick in that round and the original team loses
+        theirs.</p>
+
+      <h3 style="font-size:0.95rem;margin:18px 0 8px;">Add a Keeper</h3>
+      <form class="pick-form" onsubmit="return false;">
+        <div class="pick-row keeper-row-lead">
+          <div>
+            <label>Round <span class="field-hint">(prior season)</span></label>
+            <input id="keeper-round" type="number" min="1" />
+          </div>
+          <div>
+            <label>Team (Owner)</label>
+            <select id="keeper-slot"></select>
+          </div>
+        </div>
+        <div class="pick-row">
+          <div class="player-autocomplete">
+            <label>Player Name</label>
+            <input id="keeper-player" type="text" placeholder="e.g. Josh Allen" autocomplete="off" />
+            <div id="keeper-suggestions" class="search-results" hidden></div>
+          </div>
+          <div>
+            <label>Position</label>
+            <select id="keeper-position">
+              <option value="">All skill positions</option>
+              <option value="QB">QB — Quarterback</option>
+              <option value="RB">RB — Running Back</option>
+              <option value="WR">WR — Wide Receiver</option>
+              <option value="TE">TE — Tight End</option>
+              <option value="W/R/T">W/R/T — WR / RB / TE</option>
+              <option value="K">K — Kicker</option>
+              <option value="DEF">DEF — Defense</option>
+            </select>
+          </div>
+          <div>
+            <label>NFL Team</label>
+            <select id="keeper-nflteam"><option value="">Any NFL team</option></select>
+          </div>
+        </div>
+        <div class="full-row">
+          <button class="btn" onclick="saveKeeper()">Save Keeper</button>
+        </div>
+      </form>
+      <p id="keeper-status" class="status-msg"></p>
+      <div id="keeper-list" class="traded-list"></div>
+
+      <h3 style="font-size:0.95rem;margin:22px 0 8px;">Traded Picks</h3>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Pick trades are a swap: each side gives up a pick, and the two
+        must be from different rounds. Example — Quattro Formaggio trades its 10th rounder to Bad News Hilts for their
+        3rd rounder. The Firesale limit is enforced here: per round band (rounds 1–3, 4–7, and 8+), each team may
+        trade away one pick and trade for one pick per season.</p>
+      <form class="pick-form" onsubmit="return false;">
+        <div class="pick-row trade-leg">
+          <div>
+            <label>Team</label>
+            <select id="trade-team-a"></select>
+          </div>
+          <div>
+            <label>Trades away round</label>
+            <input id="trade-round-a" type="number" min="1" />
+          </div>
+        </div>
+        <div class="pick-row trade-leg">
+          <div>
+            <label>Team</label>
+            <select id="trade-team-b"></select>
+          </div>
+          <div>
+            <label>Trades away round</label>
+            <input id="trade-round-b" type="number" min="1" />
+          </div>
+        </div>
+        <div class="full-row">
+          <button class="btn" onclick="recordTrade()">Record Trade</button>
+        </div>
+      </form>
+      <p id="trade-status" class="status-msg"></p>
+      <div id="trade-list" class="traded-list"></div>
     </section>
 
     <section class="rules-section">
@@ -194,6 +296,7 @@
 
   async function initAdmin() {
     wirePlayerAutocomplete();
+    wirePickForm();
     loadPlayerFilterOptions(); // constants only — must not wait on Supabase, or hide behind its failure paths
     sb = getSupabaseClient();
     if (new URLSearchParams(location.search).get("yahoo") === "connected") {
@@ -217,7 +320,14 @@
       sb.from("draft_config").select("*").eq("id", 1).limit(1),
       sb.from("draft_picks").select("*").order("overall_pick")
     ]);
-    currentConfig = { rounds: cfgRows[0].rounds, teams: cfgRows[0].teams, draftDate: cfgRows[0].draft_date };
+    currentConfig = {
+      rounds: cfgRows[0].rounds,
+      teams: cfgRows[0].teams,
+      draftDate: cfgRows[0].draft_date,
+      // Columns are new; tolerate a project whose schema hasn't been re-run yet.
+      traded_picks: cfgRows[0].traded_picks || [],
+      clock_state: cfgRows[0].clock_state || {}
+    };
     currentPicks = picks;
     // Skip re-rendering the team-order inputs while someone's actively
     // typing in one (a realtime event mid-edit would otherwise wipe it).
@@ -232,6 +342,17 @@
       previewDraftDate();
     }
     renderSlotSelect();
+    // Point the pick form at whoever's on the clock. Skipped once the form is
+    // in use — this also runs on every realtime event, and must not yank the
+    // form away from a commissioner mid-entry or mid-correction.
+    const pickFormEl = document.querySelector("form.pick-form");
+    const pickFormInUse =
+      pickFormEl.contains(document.activeElement) ||
+      document.getElementById("pick-player").value.trim() !== "";
+    if (!pickFormInUse) goToPick(nextOverallPick());
+    renderKeeperList();
+    renderTradeList();
+    renderClockControls();
     renderBoard("board", currentConfig, currentPicks);
   }
 
@@ -278,6 +399,8 @@
           <span class="slot-label">Slot ${t.slot}</span>
           <select class="team-owner-select">${optionsHtml}</select>
           <input type="text" class="team-owner-custom" placeholder="Custom name" style="display:none;" />
+          <input type="text" class="team-manager" placeholder="Team owner"
+            value="${escapeHtml(t.manager || "")}" />
         </div>`;
       })
       .join("");
@@ -311,6 +434,7 @@
 
       const select = row.querySelector(".team-owner-select");
       const customInput = row.querySelector(".team-owner-custom");
+      const managerInput = row.querySelector(".team-manager");
       if (select.value === "__custom__") customInput.style.display = "";
       select.addEventListener("change", () => {
         if (select.value === "__custom__") {
@@ -319,6 +443,12 @@
           customInput.focus();
         } else {
           customInput.style.display = "none";
+          // Yahoo already knows the manager — offer it, but never overwrite a
+          // name that was typed by hand.
+          const picked = yahooTeamOptions.find((t) => teamOptionLabel(t) === select.value);
+          if (picked && picked.manager && !managerInput.value.trim()) {
+            managerInput.value = picked.manager;
+          }
         }
       });
     });
@@ -330,10 +460,35 @@
     });
   }
 
+  // "Team Name (Manager)" — the slot number is still the option's value, it just
+  // isn't what you read. Teams without a manager recorded fall back to the slot
+  // so the parenthetical never renders empty.
+  // Note: distinct from teamOptionLabel() above, which labels Yahoo's team list
+  // during draft-order setup. This one labels our own configured slots.
+  function draftTeamLabel(t) {
+    const who = (t.manager || "").trim() || `slot ${t.slot}`;
+    return `${t.owner} (${who})`;
+  }
+
   function renderSlotSelect() {
-    document.getElementById("pick-slot").innerHTML = currentConfig.teams
-      .map((t) => `<option value="${t.slot}">${escapeHtml(t.owner)} (slot ${t.slot})</option>`)
+    const options = currentConfig.teams
+      .map((t) => `<option value="${t.slot}">${escapeHtml(draftTeamLabel(t))}</option>`)
       .join("");
+    // Every team dropdown on the page draws from the same draft order.
+    ["pick-slot", "keeper-slot", "trade-team-a", "trade-team-b"].forEach((id) => {
+      const select = document.getElementById(id);
+      if (!select) return;
+      const previous = select.value;
+      select.innerHTML = options;
+      if (currentConfig.teams.some((t) => String(t.slot) === previous)) select.value = previous;
+    });
+    // Both sides of a trade would otherwise default to the same team, which is
+    // the one combination the form rejects.
+    const teamB = document.getElementById("trade-team-b");
+    if (teamB && !teamB.dataset.touched && currentConfig.teams[1]) {
+      teamB.value = String(currentConfig.teams[1].slot);
+      teamB.addEventListener("change", () => { teamB.dataset.touched = "1"; }, { once: true });
+    }
   }
 
   async function syncNow() {
@@ -470,7 +625,8 @@
         const select = row.querySelector(".team-owner-select");
         const customInput = row.querySelector(".team-owner-custom");
         const owner = select.value === "__custom__" ? customInput.value.trim() || "TBD" : select.value;
-        return { slot: i + 1, owner };
+        const manager = row.querySelector(".team-manager").value.trim();
+        return { slot: i + 1, owner, manager };
       });
       await callAdminApi("/api/draft-config/save", { teams });
       status.textContent = "Draft order saved.";
@@ -489,7 +645,8 @@
       const player = document.getElementById("pick-player").value.trim();
       // Position/NFL Team are autocomplete filters, so they may be left on
       // "Any" — prefer the picked player's own values when we have them.
-      const matched = selectedPlayer && selectedPlayer.name === player ? selectedPlayer : null;
+      const sel = pickAutocomplete.selected;
+      const matched = sel && sel.name === player ? sel : null;
       // Falling back to the filter only works when it names one position —
       // "W/R/T" spans three, so a free-typed name under it records no position.
       const slotFilter = document.getElementById("pick-position").value;
@@ -502,13 +659,467 @@
         status.className = "status-msg err";
         return;
       }
-      const team = currentConfig.teams.find((t) => t.slot === slot)?.owner || `Slot ${slot}`;
+      // slot stays the board position; the team recorded is whoever actually
+      // owns that pick, which differs once it's been traded.
+      const team = teamNameForPick(round, slot);
       const result = await callAdminApi("/api/picks/add", {
         round, slot, player, position, nflTeam, team, numTeams: currentConfig.teams.length
       });
-      document.getElementById("pick-player").value = "";
-      selectedPlayer = null; // the filters stay put — handy for entering several picks in a row
+      // Moves to the next open pick and clears Player/Position/NFL Team along
+      // the way — important because those dropdowns now track the last player
+      // picked, so leaving them would pin the next search to (say) WR/CIN.
+      goToPick(nextOverallPick(result.overallPick));
       status.textContent = `Saved pick #${result.overallPick}.`;
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    }
+  }
+
+  // The pick the board shows as on the clock: the first one with nothing
+  // recorded against it. Matches renderBoard()'s highlight, so the form and the
+  // board agree. It can't be picksMade + 1 — keepers fill scattered rounds
+  // before the draft, so the recorded picks aren't a contiguous run from #1.
+  // justSaved covers the moment right after a write, before the realtime
+  // update has refreshed currentPicks.
+  function nextOverallPick(justSaved) {
+    const filled = new Set((currentPicks || []).map((p) => p.overall_pick));
+    if (justSaved) filled.add(justSaved);
+    const total = currentConfig.teams.length * currentConfig.rounds;
+    for (let o = 1; o <= total; o++) if (!filled.has(o)) return o;
+    return total;
+  }
+
+  // The team that actually makes the pick at (round, slot) — the slot's own
+  // team unless that pick was traded away.
+  function teamNameForPick(round, slot) {
+    const owning = pickingSlotFor(round, slot, currentConfig.traded_picks || []);
+    return currentConfig.teams.find((t) => t.slot === owning)?.owner || `Slot ${owning}`;
+  }
+
+  // Point the whole form at one overall pick. Round and Team (slot) follow the
+  // snake order from js/draftboard.js — so entering picks in sequence needs no
+  // hand-editing, and the reversal at each round boundary is automatic — and
+  // any pick already recorded there is loaded for correction.
+  function goToPick(overallPick) {
+    if (!currentConfig || !currentConfig.teams.length) return;
+    const numTeams = currentConfig.teams.length;
+    const totalPicks = numTeams * currentConfig.rounds;
+    const target = Math.min(Math.max(Math.round(overallPick) || 1, 1), totalPicks);
+    const { round, slot } = slotForOverallPick(target, numTeams);
+    document.getElementById("pick-number").value = target;
+    document.getElementById("pick-round").value = round;
+    const slotSelect = document.getElementById("pick-slot");
+    if ([...slotSelect.options].some((o) => o.value === String(slot))) slotSelect.value = String(slot);
+    loadExistingPick(target);
+  }
+
+  // Editing is just re-entry: POST /api/picks/add upserts on overall_pick, so
+  // loading a recorded pick back into the form and saving overwrites it.
+  function loadExistingPick(overallPick) {
+    const existing = (currentPicks || []).find((p) => p.overall_pick === overallPick);
+    const playerInput = document.getElementById("pick-player");
+    const positionSelect = document.getElementById("pick-position");
+    const teamSelect = document.getElementById("pick-nflteam");
+    const status = document.getElementById("pick-status");
+
+    // When the pick on screen was traded, the Team dropdown still shows the
+    // board column it sits in — so say plainly who's actually making it.
+    const { round, slot } = slotForOverallPick(overallPick, currentConfig.teams.length);
+    const owningSlot = pickingSlotFor(round, slot, currentConfig.traded_picks || []);
+    const tradedNote =
+      owningSlot !== slot
+        ? ` — traded pick: ${teamNameForPick(round, slot)} picks here (via ${
+            currentConfig.teams.find((t) => t.slot === slot)?.owner || `slot ${slot}`
+          }).`
+        : "";
+
+    if (!existing) {
+      playerInput.value = "";
+      positionSelect.value = "";
+      teamSelect.value = "";
+      pickAutocomplete.selected = null;
+      status.textContent = tradedNote ? tradedNote.replace(/^ — /, "") : "";
+      status.className = "status-msg";
+      return;
+    }
+    playerInput.value = existing.player || "";
+    positionSelect.value = POSITION_TO_SLOT_OPTION[existing.position] || "";
+    teamSelect.value = NFL_TEAM_NAMES[existing.nfl_team] ? existing.nfl_team : "";
+    // Stand in for a suggestion click so re-saving an untouched row keeps the
+    // exact position/NFL team it already had, rather than the widened roster
+    // slot the dropdown shows (a "PK" would come back as "K").
+    pickAutocomplete.selected = { name: existing.player, position: existing.position, nflTeam: existing.nfl_team };
+    status.textContent =
+      `Editing pick #${overallPick} (${existing.player})${existing.source === "keeper" ? ", a keeper" : ""} — saving overwrites it.` +
+      tradedNote;
+    status.className = "status-msg";
+  }
+
+  // A team's earliest pick that hasn't been recorded yet — what you almost
+  // always want when you jump to a team out of order (someone drafted off-turn,
+  // or you're catching up one owner's picks). Falls back to their last pick when
+  // the team is fully drafted, so the pick stays editable rather than going nowhere.
+  // Walks the draft in overall order and considers only the picks this team
+  // actually owns — so picks it acquired by trade count, and picks it traded
+  // away are skipped.
+  function nextPickForSlot(slot) {
+    const numTeams = currentConfig.teams.length;
+    const traded = currentConfig.traded_picks || [];
+    const taken = new Set((currentPicks || []).map((p) => p.overall_pick));
+    const total = numTeams * currentConfig.rounds;
+    let last = null;
+    for (let overall = 1; overall <= total; overall++) {
+      const { round, slot: boardSlot } = slotForOverallPick(overall, numTeams);
+      if (pickingSlotFor(round, boardSlot, traded) !== slot) continue;
+      if (!taken.has(overall)) return overall;
+      last = overall;
+    }
+    return last;
+  }
+
+  function wirePickForm() {
+    document.getElementById("pick-number").addEventListener("change", (e) => {
+      goToPick(Number(e.target.value));
+    });
+    // Round keeps the team you're on and moves within it…
+    document.getElementById("pick-round").addEventListener("change", () => {
+      if (!currentConfig || !currentConfig.teams.length) return;
+      const round = Number(document.getElementById("pick-round").value);
+      const slot = Number(document.getElementById("pick-slot").value);
+      if (!round || !slot) return;
+      goToPick(overallPickForRoundSlot(round, slot, currentConfig.teams.length));
+    });
+    // …while picking a team jumps to that team's next open pick, whatever round
+    // that lands in — not their pick in the round currently showing.
+    document.getElementById("pick-slot").addEventListener("change", () => {
+      if (!currentConfig || !currentConfig.teams.length) return;
+      const slot = Number(document.getElementById("pick-slot").value);
+      if (!slot) return;
+      const target = nextPickForSlot(slot);
+      if (target) goToPick(target);
+    });
+  }
+
+  // ── Keepers ───────────────────────────────────────────────────────────────
+  // A keeper is an ordinary pick row written before draft day at the round the
+  // rules assign it, tagged source='keeper'. That makes it occupy its cell on
+  // the board, drop out of the autocomplete, and get skipped by the on-the-clock
+  // logic — no separate code path for any of it.
+  async function saveKeeper() {
+    const status = document.getElementById("keeper-status");
+    try {
+      const round = Number(document.getElementById("keeper-round").value);
+      const slot = Number(document.getElementById("keeper-slot").value);
+      const player = document.getElementById("keeper-player").value.trim();
+      if (!round || !slot || !player) {
+        status.textContent = "Round, team, and player are required.";
+        status.className = "status-msg err";
+        return;
+      }
+      if (round > currentConfig.rounds) {
+        status.textContent = `This draft only has ${currentConfig.rounds} rounds.`;
+        status.className = "status-msg err";
+        return;
+      }
+
+      const sel = keeperAutocomplete.selected;
+      const matched = sel && sel.name === player ? sel : null;
+      const slotFilter = document.getElementById("keeper-position").value;
+      const position = matched ? matched.position || "" : slotFilter === "W/R/T" ? "" : slotFilter;
+      const nflTeam = matched ? matched.nflTeam || "" : document.getElementById("keeper-nflteam").value;
+
+      const overall = overallPickForRoundSlot(round, slot, currentConfig.teams.length);
+      const existing = (currentPicks || []).find((p) => p.overall_pick === overall);
+      if (existing && existing.source !== "keeper") {
+        status.textContent = `Pick #${overall} already holds a drafted player (${existing.player}). Remove it first.`;
+        status.className = "status-msg err";
+        return;
+      }
+      // A team has exactly one pick per round, so a second round-N keeper for
+      // the same team would silently overwrite the first. That's the Bump Up
+      // Rule case — which player moves is the owner's call, not ours — so
+      // refuse rather than quietly replacing someone's keeper.
+      if (existing && existing.source === "keeper" && existing.player !== player) {
+        status.textContent =
+          `${existing.player} is already this team's round-${round} keeper. Per the Bump Up Rule one of them ` +
+          `moves to round ${round - 1} — remove the existing keeper below, or save this one in a different round.`;
+        status.className = "status-msg err";
+        return;
+      }
+
+      await callAdminApi("/api/picks/add", {
+        round, slot, player, position, nflTeam,
+        team: teamNameForPick(round, slot),
+        numTeams: currentConfig.teams.length,
+        source: "keeper"
+      });
+      keeperAutocomplete.reset();
+      document.getElementById("keeper-round").value = "";
+      status.textContent = `Saved ${player} as a round-${round} keeper (pick #${overall}).`;
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    }
+  }
+
+  async function removeKeeper(overallPick) {
+    const status = document.getElementById("keeper-status");
+    try {
+      const result = await callAdminApi("/api/picks/remove", { overallPick });
+      status.textContent = result.removed
+        ? `Removed keeper ${result.removed.player} — pick #${overallPick} is back in the draft.`
+        : "That keeper was already gone.";
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    }
+  }
+
+  function renderKeeperList() {
+    const el = document.getElementById("keeper-list");
+    if (!el) return;
+    const keepers = (currentPicks || [])
+      .filter((p) => p.source === "keeper")
+      .sort((a, b) => a.round - b.round || a.slot - b.slot);
+    el.innerHTML = keepers
+      .map(
+        (k) => `<div class="traded-row">
+          <span class="rd">Rd ${k.round}</span>
+          <span class="grow">${escapeHtml(k.player)}${k.position ? ` <span class="meta">${escapeHtml(k.position)}${k.nfl_team ? " · " + escapeHtml(k.nfl_team) : ""}</span>` : ""}
+            — ${escapeHtml(k.team)}</span>
+          <span class="meta">#${k.overall_pick}</span>
+          <button type="button" onclick="removeKeeper(${k.overall_pick})">Remove</button>
+        </div>`
+      )
+      .join("");
+  }
+
+  // ── Traded picks ──────────────────────────────────────────────────────────
+  // Stored on draft_config as [{round, fromSlot, toSlot}]. The pick keeps its
+  // position in the snake order; only the team making it changes.
+  // The Firesale / Tanking Safeguards limit, by round band. Rounds 8+ rather
+  // than the Firesale rule's literal "8-15", so a 16-round draft's last round
+  // is still covered.
+  const TRADE_BANDS = [
+    { label: "1–3", min: 1, max: 3 },
+    { label: "4–7", min: 4, max: 7 },
+    { label: "8+", min: 8, max: Infinity }
+  ];
+
+  function tradeBandFor(round) {
+    return TRADE_BANDS.find((b) => round >= b.min && round <= b.max) || null;
+  }
+
+  // Firesale Trades: a team may "trade for AND trade away one draft pick" per
+  // band — so the two directions have separate budgets. Giving away a round-4
+  // pick doesn't stop you acquiring one in the same band; giving away a second
+  // one does. Sending and receiving are therefore counted in separate buckets.
+  // newLegs are the ones being added right now; the message should point at the
+  // trade already on record, not at the one the commissioner is trying to make.
+  function firesaleConflict(tradedPicks, newLegs = []) {
+    const isNew = (leg) =>
+      newLegs.some((n) => n.round === Number(leg.round) && n.fromSlot === Number(leg.fromSlot));
+    const sent = new Map(); // "slot|band" → leg where that team gave a pick away
+    const received = new Map(); // "slot|band" → leg where that team acquired one
+    for (const leg of tradedPicks) {
+      const band = tradeBandFor(Number(leg.round));
+      if (!band) continue;
+      const sides = [
+        { slot: Number(leg.fromSlot), book: sent, direction: "trade away" },
+        { slot: Number(leg.toSlot), book: received, direction: "trade for" }
+      ];
+      for (const { slot, book, direction } of sides) {
+        const key = `${slot}|${band.label}`;
+        const prior = book.get(key);
+        if (prior) {
+          // Whichever of the two is already on record is the one worth naming.
+          const existing = isNew(prior) && !isNew(leg) ? leg : prior;
+          return { slot, band: band.label, direction, prior: existing };
+        }
+        book.set(key, leg);
+      }
+    }
+    return null;
+  }
+
+  // A trade is a swap: both sides give up a pick, and the two picks come from
+  // different rounds. Stored as two independent ownership entries, because the
+  // board only ever asks "who makes this one pick?" — but entered and shown as
+  // the single swap it actually is.
+  async function recordTrade() {
+    const status = document.getElementById("trade-status");
+    const fail = (msg) => {
+      status.textContent = msg;
+      status.className = "status-msg err";
+    };
+    try {
+      const slotA = Number(document.getElementById("trade-team-a").value);
+      const roundA = Number(document.getElementById("trade-round-a").value);
+      const slotB = Number(document.getElementById("trade-team-b").value);
+      const roundB = Number(document.getElementById("trade-round-b").value);
+
+      if (!slotA || !slotB || !roundA || !roundB) return fail("Both teams and both rounds are required.");
+      if (slotA === slotB) return fail("A team can't trade with itself — pick two different teams.");
+      if (roundA > currentConfig.rounds || roundB > currentConfig.rounds) {
+        return fail(`This draft only has ${currentConfig.rounds} rounds.`);
+      }
+      if (roundA === roundB) {
+        return fail(`Both sides are giving up a round-${roundA} pick. A trade has to be for a different round.`);
+      }
+
+      // Each leg replaces any earlier entry for that same pick, so re-trading a
+      // pick doesn't stack a second, unreachable ownership record on top.
+      const legs = [
+        { round: roundA, fromSlot: slotA, toSlot: slotB },
+        { round: roundB, fromSlot: slotB, toSlot: slotA }
+      ];
+      const rest = (currentConfig.traded_picks || []).filter(
+        (t) => !legs.some((l) => Number(t.round) === l.round && Number(t.fromSlot) === l.fromSlot)
+      );
+      const tradedPicks = [...rest, ...legs].sort((a, b) => a.round - b.round || a.fromSlot - b.fromSlot);
+
+      const conflict = firesaleConflict(tradedPicks, legs);
+      if (conflict) {
+        const p = conflict.prior;
+        const verb = conflict.direction === "trade away" ? "trading away" : "trading for";
+        return fail(
+          `Firesale rule: ${slotOwnerName(conflict.slot)} is already ${verb} a rounds ${conflict.band} pick ` +
+            `(round ${p.round}, ${slotOwnerName(p.fromSlot)} → ${slotOwnerName(p.toSlot)}). Each team may ` +
+            `${conflict.direction} only one pick per round band (1–3, 4–7, 8+) per season. Remove that trade ` +
+            `first, or use a round from a different band.`
+        );
+      }
+
+      await callAdminApi("/api/draft-config/save", { tradedPicks });
+      document.getElementById("trade-round-a").value = "";
+      document.getElementById("trade-round-b").value = "";
+      status.textContent =
+        `${slotOwnerName(slotA)} trades round ${roundA} to ${slotOwnerName(slotB)} ` +
+        `for round ${roundB}.`;
+      status.className = "status-msg ok";
+    } catch (e) {
+      fail("Error: " + e.message);
+    }
+  }
+
+  // Removes one or both legs — passed as "round:fromSlot" pairs so a swap comes
+  // undone in one click rather than leaving a half-trade on the board.
+  async function removeTrade(legKeys) {
+    const status = document.getElementById("trade-status");
+    try {
+      const drop = new Set(legKeys);
+      const tradedPicks = (currentConfig.traded_picks || []).filter(
+        (t) => !drop.has(`${Number(t.round)}:${Number(t.fromSlot)}`)
+      );
+      await callAdminApi("/api/draft-config/save", { tradedPicks });
+      status.textContent = "Trade removed — those picks are back with their original teams.";
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    }
+  }
+
+  // Matches the two legs of a swap back together for display. Anything without a
+  // counterpart (a one-way move, or half a trade left behind) still shows, on
+  // its own, so nothing recorded can silently disappear from this list.
+  function tradePairs() {
+    const legs = (currentConfig.traded_picks || [])
+      .slice()
+      .sort((a, b) => a.round - b.round || a.fromSlot - b.fromSlot);
+    const used = new Set();
+    const pairs = [];
+    legs.forEach((leg, i) => {
+      if (used.has(i)) return;
+      const j = legs.findIndex(
+        (other, k) =>
+          k !== i &&
+          !used.has(k) &&
+          Number(other.fromSlot) === Number(leg.toSlot) &&
+          Number(other.toSlot) === Number(leg.fromSlot)
+      );
+      used.add(i);
+      if (j >= 0) {
+        used.add(j);
+        pairs.push([leg, legs[j]]);
+      } else {
+        pairs.push([leg]);
+      }
+    });
+    return pairs;
+  }
+
+  function slotOwnerName(slot) {
+    return currentConfig.teams.find((t) => t.slot === Number(slot))?.owner || `Slot ${slot}`;
+  }
+
+  function renderTradeList() {
+    const el = document.getElementById("trade-list");
+    if (!el) return;
+    const numTeams = currentConfig.teams.length;
+    const legText = (t) => {
+      const overall = overallPickForRoundSlot(Number(t.round), Number(t.fromSlot), numTeams);
+      return `<span class="rd">Rd ${t.round}</span> ${escapeHtml(slotOwnerName(t.fromSlot))} →
+        <strong>${escapeHtml(slotOwnerName(t.toSlot))}</strong> <span class="meta">#${overall}</span>`;
+    };
+    el.innerHTML = tradePairs()
+      .map((pair) => {
+        const keys = pair.map((t) => `${Number(t.round)}:${Number(t.fromSlot)}`);
+        const body =
+          pair.length === 2
+            ? `${legText(pair[0])} <span class="swap">⇄</span> ${legText(pair[1])}`
+            : `${legText(pair[0])} <span class="meta">(one-way)</span>`;
+        return `<div class="traded-row">
+          <span class="grow">${body}</span>
+          <button type="button" onclick='removeTrade(${JSON.stringify(keys)})'>Remove</button>
+        </div>`;
+      })
+      .join("");
+  }
+
+  // ── Pick clock ────────────────────────────────────────────────────────────
+  // The clock lives in draft_config, so pausing here pauses it for everyone
+  // watching the public board too — and it survives a reload.
+  function pickClockPaused() {
+    return Boolean((currentConfig && currentConfig.clock_state && currentConfig.clock_state.pausedAt) || false);
+  }
+
+  function renderClockControls() {
+    const btn = document.getElementById("clock-toggle");
+    if (!btn) return;
+    btn.textContent = pickClockPaused() ? "Resume Clock" : "Pause Clock";
+  }
+
+  async function togglePickClock() {
+    const status = document.getElementById("pick-status");
+    const action = pickClockPaused() ? "resume" : "pause";
+    try {
+      const result = await callAdminApi("/api/clock/set", { action });
+      // Apply locally so the button flips immediately rather than waiting for
+      // the realtime round-trip.
+      if (currentConfig) currentConfig.clock_state = result.clockState || {};
+      renderClockControls();
+      renderBoard("board", currentConfig, currentPicks);
+      status.textContent = action === "pause" ? "Clock paused." : "Clock resumed.";
+      status.className = "status-msg ok";
+    } catch (e) {
+      status.textContent = "Error: " + e.message;
+      status.className = "status-msg err";
+    }
+  }
+
+  async function resetPickClock() {
+    const status = document.getElementById("pick-status");
+    try {
+      const result = await callAdminApi("/api/clock/set", { action: "reset" });
+      if (currentConfig) currentConfig.clock_state = result.clockState || {};
+      renderClockControls();
+      renderBoard("board", currentConfig, currentPicks);
+      status.textContent = `Clock reset — a full ${PICK_CLOCK_SECONDS / 60} minutes back on the board.`;
       status.className = "status-msg ok";
     } catch (e) {
       status.textContent = "Error: " + e.message;
@@ -520,6 +1131,9 @@
     const status = document.getElementById("pick-status");
     try {
       const result = await callAdminApi("/api/picks/undo", {});
+      // Step the form back onto the pick that was just removed, so undo-and-
+      // retype is the fix-a-mistake flow it looks like.
+      if (result.removed) goToPick(result.removed.overall_pick);
       status.textContent = result.removed ? `Removed pick #${result.removed.overall_pick}.` : "No picks to remove.";
       status.className = "status-msg ok";
     } catch (e) {
@@ -549,6 +1163,17 @@
   // balldontlie returns with position "UNK".
   const DRAFTABLE_POSITIONS = [...new Set(Object.values(ROSTER_SLOT_POSITIONS).flat())];
 
+  // Reverse of the above: a raw nfl_players position → the one Position option
+  // that describes it. W/R/T is skipped because it spans three positions, so
+  // it's never the single right answer for a specific player.
+  const POSITION_TO_SLOT_OPTION = Object.entries(ROSTER_SLOT_POSITIONS).reduce(
+    (acc, [slot, positions]) => {
+      if (slot !== "W/R/T") positions.forEach((p) => { if (!acc[p]) acc[p] = slot; });
+      return acc;
+    },
+    { DEF: "DEF" }
+  );
+
   const NFL_TEAM_NAMES = {
     ARI: "Arizona Cardinals", ATL: "Atlanta Falcons", BAL: "Baltimore Ravens",
     BUF: "Buffalo Bills", CAR: "Carolina Panthers", CHI: "Chicago Bears",
@@ -563,93 +1188,207 @@
     TEN: "Tennessee Titans", WSH: "Washington Commanders"
   };
 
-  let playerSuggestions = [];
-  let playerSuggestionIndex = -1;
-  let playerSearchTimer = null;
-  let playerAutocompleteWired = false;
-  let playerSearchSeq = 0;
-  let selectedPlayer = null;
+  // Two of these exist: one for the pick form, one for keeper entry. Each owns
+  // its own suggestion list, debounce timer and in-flight sequence number, so
+  // typing in one can never clobber the other's dropdown.
+  function createPlayerAutocomplete({ inputId, dropdownId, positionId, teamId }) {
+    let suggestions = [];
+    let activeIndex = -1;
+    let searchTimer = null;
+    let searchSeq = 0;
+    let selected = null;
 
-  function wirePlayerAutocomplete() {
-    if (playerAutocompleteWired) return;
-    playerAutocompleteWired = true;
+    const input = () => document.getElementById(inputId);
+    const dropdown = () => document.getElementById(dropdownId);
+    const filters = () => ({
+      position: document.getElementById(positionId).value,
+      nflTeam: document.getElementById(teamId).value
+    });
 
-    const input = document.getElementById("pick-player");
-    const dropdown = document.getElementById("player-suggestions");
+    // With a position/team filter on, an empty box is a useful query (browse the
+    // whole filtered list); with no filter it would mean "every NFL player".
+    function queueSearch(delayMs) {
+      clearTimeout(searchTimer);
+      const q = input().value.trim();
+      const { position, nflTeam } = filters();
+      if (q.length < 2 && !position && !nflTeam) {
+        hide();
+        return;
+      }
+      if (delayMs) searchTimer = setTimeout(() => search(q), delayMs);
+      else search(q);
+    }
 
-    input.addEventListener("input", () => {
-      selectedPlayer = null;
-      queuePlayerSearch(300);
+    async function search(q) {
+      const seq = ++searchSeq;
+      try {
+        const alreadyDrafted = new Set((currentPicks || []).map((p) => (p.player || "").toLowerCase()));
+        const { position, nflTeam } = filters();
+
+        let results;
+        if (position === "DEF") {
+          results = teamDefenseSuggestions(q, nflTeam);
+        } else {
+          // Always constrain to draftable positions, even on "All skill
+          // positions" — individual defenders are never a valid pick.
+          const positions = ROSTER_SLOT_POSITIONS[position] || DRAFTABLE_POSITIONS;
+          let query = sb.from("nfl_players").select("full_name, position, team").in("position", positions);
+          if (q) query = query.ilike("full_name", `%${q}%`);
+          if (nflTeam) query = query.eq("team", nflTeam);
+          const { data, error } = await query.order("full_name").limit(25);
+          if (error) throw error;
+          if (seq !== searchSeq) return; // a newer search superseded this one; discard stale response
+          results = (data || []).map((p) => ({ name: p.full_name, position: p.position, nflTeam: p.team }));
+        }
+
+        if (seq !== searchSeq) return;
+        suggestions = results.filter((p) => !alreadyDrafted.has(p.name.toLowerCase()));
+        activeIndex = -1;
+        render();
+      } catch (e) {
+        if (seq !== searchSeq) return;
+        console.warn("Player autocomplete failed:", e.message);
+        hide();
+      }
+    }
+
+    function render() {
+      const el = dropdown();
+      if (!suggestions.length) {
+        hide();
+        return;
+      }
+      el.innerHTML = suggestions
+        .map(
+          (p, i) => `<div class="search-result${i === activeIndex ? " active" : ""}" data-index="${i}">
+            <span class="search-text">${escapeHtml(p.name)}</span>
+            <span class="search-breadcrumb">${escapeHtml(p.position || "")}${p.nflTeam ? " · " + escapeHtml(p.nflTeam) : ""}</span>
+          </div>`
+        )
+        .join("");
+      el.hidden = false;
+      el.querySelectorAll(".search-result").forEach((node) => {
+        node.addEventListener("click", () => choose(Number(node.dataset.index)));
+      });
+      // The filtered list can be longer than the dropdown is tall — keep the
+      // arrow-key selection visible.
+      const active = el.querySelector(".search-result.active");
+      if (active) active.scrollIntoView({ block: "nearest" });
+    }
+
+    function choose(index) {
+      const p = suggestions[index];
+      if (!p) return;
+      input().value = p.name;
+      selected = p;
+
+      // Mirror the chosen player's own position and NFL team into the dropdowns.
+      // Assigning .value fires no change event, so this can't retrigger the
+      // search whose handler would clear `selected`.
+      const positionSelect = document.getElementById(positionId);
+      const slotOption = POSITION_TO_SLOT_OPTION[p.position] || "";
+      if ([...positionSelect.options].some((o) => o.value === slotOption)) {
+        positionSelect.value = slotOption;
+      }
+      // Free agents come across with no team — fall back to "Any" rather than
+      // leaving whatever was selected before, which would misdescribe the player.
+      document.getElementById(teamId).value =
+        p.nflTeam && NFL_TEAM_NAMES[p.nflTeam] ? p.nflTeam : "";
+
+      hide();
+    }
+
+    function hide() {
+      clearTimeout(searchTimer);
+      searchSeq++; // invalidate any in-flight search() so it can't reopen this dropdown
+      suggestions = [];
+      activeIndex = -1;
+      const el = dropdown();
+      el.hidden = true;
+      el.innerHTML = "";
+    }
+
+    input().addEventListener("input", () => {
+      selected = null;
+      queueSearch(300);
     });
 
     // Changing a filter re-runs the current search so the list narrows in place.
-    ["pick-position", "pick-nflteam"].forEach((id) => {
+    [positionId, teamId].forEach((id) => {
       document.getElementById(id).addEventListener("change", () => {
-        selectedPlayer = null;
-        queuePlayerSearch(0);
+        selected = null;
+        queueSearch(0);
       });
     });
 
-    input.addEventListener("keydown", (e) => {
-      if (dropdown.hidden) return;
+    input().addEventListener("keydown", (e) => {
+      if (dropdown().hidden) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        playerSuggestionIndex = Math.min(playerSuggestionIndex + 1, playerSuggestions.length - 1);
-        renderPlayerSuggestions();
+        activeIndex = Math.min(activeIndex + 1, suggestions.length - 1);
+        render();
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        playerSuggestionIndex = Math.max(playerSuggestionIndex - 1, -1);
-        renderPlayerSuggestions();
-      } else if (e.key === "Enter" && playerSuggestionIndex >= 0) {
+        activeIndex = Math.max(activeIndex - 1, -1);
+        render();
+      } else if (e.key === "Enter" && activeIndex >= 0) {
         e.preventDefault();
-        selectPlayerSuggestion(playerSuggestionIndex);
+        choose(activeIndex);
       } else if (e.key === "Escape") {
-        hidePlayerSuggestions();
+        hide();
       }
     });
 
     document.addEventListener("click", (e) => {
-      if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-        hidePlayerSuggestions();
-      }
+      if (!input().contains(e.target) && !dropdown().contains(e.target)) hide();
     });
-  }
 
-  function playerFilters() {
     return {
-      position: document.getElementById("pick-position").value,
-      nflTeam: document.getElementById("pick-nflteam").value
+      get selected() { return selected; },
+      set selected(v) { selected = v; },
+      hide,
+      reset() {
+        input().value = "";
+        document.getElementById(positionId).value = "";
+        document.getElementById(teamId).value = "";
+        selected = null;
+        hide();
+      }
     };
   }
 
-  // With a position/team filter on, an empty box is a useful query (browse the
-  // whole filtered list); with no filter it would mean "every NFL player".
-  function queuePlayerSearch(delayMs) {
-    clearTimeout(playerSearchTimer);
-    const q = document.getElementById("pick-player").value.trim();
-    const { position, nflTeam } = playerFilters();
-    if (q.length < 2 && !position && !nflTeam) {
-      hidePlayerSuggestions();
-      return;
-    }
-    if (delayMs) playerSearchTimer = setTimeout(() => searchPlayers(q), delayMs);
-    else searchPlayers(q);
+  let pickAutocomplete = null;
+  let keeperAutocomplete = null;
+
+  function wirePlayerAutocomplete() {
+    if (pickAutocomplete) return;
+    pickAutocomplete = createPlayerAutocomplete({
+      inputId: "pick-player", dropdownId: "player-suggestions",
+      positionId: "pick-position", teamId: "pick-nflteam"
+    });
+    keeperAutocomplete = createPlayerAutocomplete({
+      inputId: "keeper-player", dropdownId: "keeper-suggestions",
+      positionId: "keeper-position", teamId: "keeper-nflteam"
+    });
   }
 
-  // The NFL is a fixed 32 teams and Position is now a fixed list of our roster
+  // The NFL is a fixed 32 teams and Position is a fixed list of our roster
   // slots, so both dropdowns are built from constants rather than discovered by
   // paging the 13k-row nfl_players table. Values stay abbreviations (what the
   // `team` column holds); labels are the full names.
   function loadPlayerFilterOptions() {
-    const select = document.getElementById("pick-nflteam");
-    const previous = select.value;
-    select.innerHTML =
+    const options =
       `<option value="">Any NFL team</option>` +
       Object.entries(NFL_TEAM_NAMES)
         .sort((a, b) => a[1].localeCompare(b[1]))
         .map(([abbr, name]) => `<option value="${escapeHtml(abbr)}">${escapeHtml(name)}</option>`)
         .join("");
-    if (NFL_TEAM_NAMES[previous]) select.value = previous;
+    ["pick-nflteam", "keeper-nflteam"].forEach((id) => {
+      const select = document.getElementById(id);
+      const previous = select.value;
+      select.innerHTML = options;
+      if (NFL_TEAM_NAMES[previous]) select.value = previous;
+    });
   }
 
   // The 32 team defenses, drafted by full team name rather than as individual
@@ -660,83 +1399,6 @@
       .filter(([abbr, name]) => (!nflTeam || abbr === nflTeam) && (!needle || name.toLowerCase().includes(needle)))
       .map(([abbr, name]) => ({ name, position: "DEF", nflTeam: abbr }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  async function searchPlayers(q) {
-    const seq = ++playerSearchSeq;
-    try {
-      const alreadyDrafted = new Set((currentPicks || []).map((p) => (p.player || "").toLowerCase()));
-      const { position, nflTeam } = playerFilters();
-
-      let results;
-      if (position === "DEF") {
-        results = teamDefenseSuggestions(q, nflTeam);
-      } else {
-        // Always constrain to draftable positions, even on "All skill
-        // positions" — individual defenders are never a valid pick.
-        const positions = ROSTER_SLOT_POSITIONS[position] || DRAFTABLE_POSITIONS;
-        let query = sb.from("nfl_players").select("full_name, position, team").in("position", positions);
-        if (q) query = query.ilike("full_name", `%${q}%`);
-        if (nflTeam) query = query.eq("team", nflTeam);
-        const { data, error } = await query.order("full_name").limit(25);
-        if (error) throw error;
-        if (seq !== playerSearchSeq) return; // a newer search superseded this one; discard stale response
-        results = (data || []).map((p) => ({ name: p.full_name, position: p.position, nflTeam: p.team }));
-      }
-
-      if (seq !== playerSearchSeq) return;
-      playerSuggestions = results.filter((p) => !alreadyDrafted.has(p.name.toLowerCase()));
-      playerSuggestionIndex = -1;
-      renderPlayerSuggestions();
-    } catch (e) {
-      if (seq !== playerSearchSeq) return;
-      console.warn("Player autocomplete failed:", e.message);
-      hidePlayerSuggestions();
-    }
-  }
-
-  function renderPlayerSuggestions() {
-    const dropdown = document.getElementById("player-suggestions");
-    if (!playerSuggestions.length) {
-      hidePlayerSuggestions();
-      return;
-    }
-    dropdown.innerHTML = playerSuggestions
-      .map(
-        (p, i) => `<div class="search-result${i === playerSuggestionIndex ? " active" : ""}" data-index="${i}">
-          <span class="search-text">${escapeHtml(p.name)}</span>
-          <span class="search-breadcrumb">${escapeHtml(p.position || "")}${p.nflTeam ? " · " + escapeHtml(p.nflTeam) : ""}</span>
-        </div>`
-      )
-      .join("");
-    dropdown.hidden = false;
-    dropdown.querySelectorAll(".search-result").forEach((el) => {
-      el.addEventListener("click", () => selectPlayerSuggestion(Number(el.dataset.index)));
-    });
-    // The filtered list can be longer than the dropdown is tall — keep the
-    // arrow-key selection visible.
-    const active = dropdown.querySelector(".search-result.active");
-    if (active) active.scrollIntoView({ block: "nearest" });
-  }
-
-  function selectPlayerSuggestion(index) {
-    const p = playerSuggestions[index];
-    if (!p) return;
-    document.getElementById("pick-player").value = p.name;
-    // The dropdowns stay as filters; the chosen player's own position/team ride
-    // along in selectedPlayer and are what submitPick sends.
-    selectedPlayer = p;
-    hidePlayerSuggestions();
-  }
-
-  function hidePlayerSuggestions() {
-    clearTimeout(playerSearchTimer);
-    playerSearchSeq++; // invalidate any in-flight searchPlayers() so it can't reopen this dropdown
-    playerSuggestions = [];
-    playerSuggestionIndex = -1;
-    const dropdown = document.getElementById("player-suggestions");
-    dropdown.hidden = true;
-    dropdown.innerHTML = "";
   }
 
   // Stay logged in across reloads: if a password is already cached from a

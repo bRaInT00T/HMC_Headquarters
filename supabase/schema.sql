@@ -9,9 +9,26 @@ create table if not exists draft_config (
   format text not null default 'Snake',
   rounds int not null default 16,
   teams jsonb not null default '[]'::jsonb,
+  -- Picks that changed hands. Each entry is
+  --   {"round":3,"fromSlot":4,"toSlot":10}
+  -- meaning: the round-3 pick sitting in slot 4's column is now made by slot 10.
+  -- The pick keeps its position in the snake order — only who makes it changes
+  -- (league rule: "you will not have that pick… the team you traded with will
+  -- receive an additional pick in that round").
+  traded_picks jsonb not null default '[]'::jsonb,
+  -- The pick clock, so every viewer agrees and a reload doesn't restart it:
+  --   {"startedAt":"…","pausedAt":null}
+  -- startedAt is when the current team went on the clock; pausedAt freezes the
+  -- countdown at whatever was left. Empty {} means "derive it from the last
+  -- pick's entered_at", which is how it behaved before pause/reset existed.
+  clock_state jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   constraint draft_config_singleton check (id = 1)
 );
+
+-- Existing projects: add new columns without touching the row's other values.
+alter table draft_config add column if not exists traded_picks jsonb not null default '[]'::jsonb;
+alter table draft_config add column if not exists clock_state jsonb not null default '{}'::jsonb;
 
 insert into draft_config (id, teams)
 values (1, '[
@@ -31,7 +48,10 @@ create table if not exists draft_picks (
   player text not null,
   position text,
   nfl_team text,
-  source text not null default 'manual', -- 'manual' or 'yahoo'
+  -- 'manual' | 'yahoo' | 'keeper'. Keepers are ordinary pick rows written
+  -- before draft day at the round the league rules assign them, so they occupy
+  -- their slot on the board and are skipped by the on-the-clock logic.
+  source text not null default 'manual',
   entered_at timestamptz not null default now()
 );
 
@@ -81,8 +101,29 @@ create policy "public read nfl_players" on nfl_players for select using (true);
 -- direction. Only the service role key (server-side only) can touch it.
 
 -- ── Realtime: let draft.html subscribe to live pick updates ──
--- If this errors because the publication already includes the table, or
--- doesn't exist yet, just enable "Realtime" for draft_picks from the Table
--- Editor UI instead (Database → Replication → supabase_realtime).
-alter publication supabase_realtime add table draft_picks;
-alter publication supabase_realtime add table draft_config;
+-- Adding a table that's already in the publication raises 42710, and the
+-- Supabase SQL Editor runs this file as a single transaction — so a bare
+-- `alter publication … add table` would roll back everything above it on a
+-- re-run. Guarded so this file stays safe to run more than once.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'draft_picks'
+  ) then
+    alter publication supabase_realtime add table draft_picks;
+  end if;
+
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'draft_config'
+  ) then
+    alter publication supabase_realtime add table draft_config;
+  end if;
+exception
+  when undefined_object then
+    -- No supabase_realtime publication in this project yet. Enable Realtime for
+    -- draft_picks/draft_config from the Table Editor UI instead
+    -- (Database → Replication → supabase_realtime).
+    raise notice 'supabase_realtime publication not found — enable Realtime from the dashboard.';
+end $$;

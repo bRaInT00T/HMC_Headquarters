@@ -12,9 +12,16 @@ module.exports = async (req, res) => {
   if (!requireAdmin(req, res)) return;
 
   try {
-    const { teams, rounds, season, draftDate, format } = req.body || {};
+    const { teams, rounds, season, draftDate, format, tradedPicks } = req.body || {};
     const patch = {};
     if (teams) patch.teams = teams;
+    // Sent as a whole array (the admin UI edits the full list), so an empty
+    // array has to be accepted — it means "no trades", not "nothing to update".
+    if (Array.isArray(tradedPicks)) {
+      patch.traded_picks = tradedPicks
+        .filter((t) => t && t.round && t.fromSlot && t.toSlot)
+        .map((t) => ({ round: Number(t.round), fromSlot: Number(t.fromSlot), toSlot: Number(t.toSlot) }));
+    }
     if (rounds) patch.rounds = rounds;
     if (season) patch.season = season;
     if (draftDate) patch.draft_date = draftDate;

@@ -332,7 +332,7 @@ main {
   flex-direction: column;
   gap: 8px;
   margin-top: 16px;
-  max-width: 480px;
+  max-width: 720px;
 }
 
 .draft-order-row {
@@ -364,9 +364,24 @@ main {
   flex-shrink: 0;
 }
 
+/* Same treatment as form.pick-form's controls — these rows were still using
+   the browser defaults. */
 .draft-order-row select,
 .draft-order-row input[type="text"] {
   flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.draft-order-row select:focus,
+.draft-order-row input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .card {
@@ -607,6 +622,49 @@ table.board td.pick-cell .player { font-weight: 600; }
 table.board td.pick-cell .meta { color: var(--text-dim); font-size: 0.72rem; }
 table.board td.pick-cell.on-clock { outline: 2px solid var(--accent); }
 
+/* Keepers are recorded before draft day, so they read as settled rather than
+   as something that just happened live. */
+table.board td.pick-cell.filled.keeper { background: #1a1a22; }
+.keeper-tag {
+  color: var(--accent-2);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* A pick that changed hands — shown in the original team's column, since the
+   draft order position doesn't move, with the acquiring team called out. */
+table.board td.pick-cell .via {
+  color: var(--accent);
+  font-style: italic;
+}
+table.board td.pick-cell.traded { background: #201c17; }
+
+/* Counts down from the moment the previous pick was recorded. Tabular figures
+   keep it from jittering as the digits change each second. */
+table.board td.pick-cell .pick-clock {
+  margin-top: 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+/* Paused reads as held, not running — no pulse, muted colour. */
+table.board td.pick-cell .pick-clock.paused { color: var(--text-dim); }
+table.board td.pick-cell .clock-note {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+table.board td.pick-cell .pick-clock.expired {
+  color: var(--danger);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  animation: pulse 1.6s infinite;
+}
+
 .live-dot {
   display: inline-block;
   width: 8px; height: 8px;
@@ -646,7 +704,87 @@ form.pick-form input, form.pick-form select {
   color: var(--text);
   font-size: 0.9rem;
 }
-form.pick-form .full-row { grid-column: 1 / -1; display: flex; gap: 10px; align-items: end; }
+form.pick-form .full-row { grid-column: 1 / -1; display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+
+/* Clock controls sit apart from the pick actions — they don't record anything. */
+form.pick-form .clock-controls {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  form.pick-form .clock-controls { margin-left: 0; padding-left: 0; border-left: none; }
+}
+
+/* A break in the auto-flow: takes the full width and lays its own fields out on
+   the same column rhythm, so the group always starts on a fresh line. */
+form.pick-form .pick-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+/* Pick # and Round hold 2-3 digits, so they get fixed tracks and the Team
+   dropdown takes every remaining pixel — team names are the long values here. */
+form.pick-form .pick-row-lead {
+  grid-template-columns: minmax(90px, 130px) minmax(90px, 130px) 1fr;
+}
+
+form.pick-form .keeper-row-lead {
+  grid-template-columns: minmax(90px, 130px) 1fr;
+}
+
+/* One side of a pick swap: the team, then the round it gives up. */
+form.pick-form .trade-leg {
+  grid-template-columns: 1fr minmax(120px, 190px);
+}
+
+@media (max-width: 640px) {
+  form.pick-form .pick-row-lead { grid-template-columns: 1fr 1fr; }
+  form.pick-form .pick-row-lead > :last-child { grid-column: 1 / -1; }
+  form.pick-form .keeper-row-lead { grid-template-columns: 1fr; }
+  form.pick-form .trade-leg { grid-template-columns: 1fr; }
+}
+
+/* Read-only lists of what's already been recorded, under each form. */
+.traded-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.traded-list:empty { display: none; }
+.traded-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.traded-row .grow { flex: 1; min-width: 0; }
+.traded-row .swap {
+  color: var(--accent-2);
+  font-weight: 700;
+  margin: 0 8px;
+  white-space: nowrap;
+}
+.traded-row .rd {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.traded-row button {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.traded-row button:hover { color: var(--danger); border-color: var(--danger); }
 
 /* Standalone labelled field (draft-date pickers), matching form.pick-form */
 .field-row {
