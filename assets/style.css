@@ -621,6 +621,14 @@ table.board td.pick-cell.filled { background: #1a1e1a; }
 table.board td.pick-cell .player { font-weight: 600; }
 table.board td.pick-cell .meta { color: var(--text-dim); font-size: 0.72rem; }
 table.board td.pick-cell.on-clock { outline: 2px solid var(--accent); }
+/* Admin only — recorded picks on the commissioner's preview board load back into
+   the entry form when clicked. The public board never gets this class. */
+table.board td.pick-cell.clickable { cursor: pointer; }
+table.board td.pick-cell.clickable:hover { background: #232a23; }
+table.board td.pick-cell.clickable:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: -2px;
+}
 
 /* Keepers are recorded before draft day, so they read as settled rather than
    as something that just happened live. */

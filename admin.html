@@ -353,7 +353,7 @@
     renderKeeperList();
     renderTradeList();
     renderClockControls();
-    renderBoard("board", currentConfig, currentPicks);
+    renderBoard("board", currentConfig, currentPicks, { onPickClick: editPick });
   }
 
   let yahooTeamOptions = []; // [{ name, manager }], populated by loadYahooTeams()
@@ -713,6 +713,16 @@
     const slotSelect = document.getElementById("pick-slot");
     if ([...slotSelect.options].some((o) => o.value === String(slot))) slotSelect.value = String(slot);
     loadExistingPick(target);
+  }
+
+  // Clicking a recorded pick on the Live Preview is the same act as typing its
+  // number into Pick # — the entry form is the editor, and /api/picks/add upserts
+  // on overall_pick, so saving overwrites in place. preventScroll keeps focus()
+  // from jumping the page and fighting the smooth scroll above it.
+  function editPick(overallPick) {
+    goToPick(overallPick);
+    document.querySelector("form.pick-form").scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("pick-player").focus({ preventScroll: true });
   }
 
   // Editing is just re-entry: POST /api/picks/add upserts on overall_pick, so
