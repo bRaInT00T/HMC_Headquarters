@@ -175,7 +175,10 @@ function renderBoard(containerId, config, picks, opts = {}) {
         // callback, so its cells stay inert markup.
         const clickable = Boolean(opts.onPickClick);
         const clickAttrs = clickable ? ` data-overall="${overall}" role="button" tabindex="0"` : "";
-        html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}"${clickAttrs}>
+        // Marks the cell the entry form is pointed at, so it's visible which pick
+        // a save would overwrite.
+        const editing = opts.editingOverall === overall ? " editing" : "";
+        html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
           <div class="player">${escapeHtml(pick.player || "")}</div>
           <div class="meta">${escapeHtml(pick.position || "")}${pick.nfl_team ? " - " + escapeHtml(pick.nfl_team) : ""}</div>
           ${viaHtml}

@@ -630,6 +630,13 @@ table.board td.pick-cell.clickable:focus-visible {
   outline-offset: -2px;
 }
 
+/* The pick currently loaded in the entry form. Deliberately a different colour
+   from .on-clock's outline — they're often two different cells. */
+table.board td.pick-cell.editing {
+  outline: 2px dashed var(--accent-2);
+  outline-offset: -2px;
+}
+
 /* Keepers are recorded before draft day, so they read as settled rather than
    as something that just happened live. */
 table.board td.pick-cell.filled.keeper { background: #1a1a22; }

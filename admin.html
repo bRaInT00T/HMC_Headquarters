@@ -315,6 +315,17 @@
       .subscribe();
   }
 
+  // The one place the admin board is rendered. editingOverall is read from the
+  // form rather than passed in, because the form and the board have to agree
+  // about which pick is loaded no matter which of them moved last.
+  function refreshBoard() {
+    if (!currentConfig || !currentPicks) return;
+    renderBoard("board", currentConfig, currentPicks, {
+      onPickClick: editPick,
+      editingOverall: Number(document.getElementById("pick-number").value) || null
+    });
+  }
+
   async function loadAll() {
     const [{ data: cfgRows }, { data: picks }] = await Promise.all([
       sb.from("draft_config").select("*").eq("id", 1).limit(1),
@@ -353,7 +364,7 @@
     renderKeeperList();
     renderTradeList();
     renderClockControls();
-    renderBoard("board", currentConfig, currentPicks, { onPickClick: editPick });
+    refreshBoard();
   }
 
   let yahooTeamOptions = []; // [{ name, manager }], populated by loadYahooTeams()
@@ -713,6 +724,7 @@
     const slotSelect = document.getElementById("pick-slot");
     if ([...slotSelect.options].some((o) => o.value === String(slot))) slotSelect.value = String(slot);
     loadExistingPick(target);
+    refreshBoard();
   }
 
   // Clicking a recorded pick on the Live Preview is the same act as typing its
@@ -1113,7 +1125,7 @@
       // the realtime round-trip.
       if (currentConfig) currentConfig.clock_state = result.clockState || {};
       renderClockControls();
-      renderBoard("board", currentConfig, currentPicks);
+      refreshBoard();
       status.textContent = action === "pause" ? "Clock paused." : "Clock resumed.";
       status.className = "status-msg ok";
     } catch (e) {
@@ -1128,7 +1140,7 @@
       const result = await callAdminApi("/api/clock/set", { action: "reset" });
       if (currentConfig) currentConfig.clock_state = result.clockState || {};
       renderClockControls();
-      renderBoard("board", currentConfig, currentPicks);
+      refreshBoard();
       status.textContent = `Clock reset — a full ${PICK_CLOCK_SECONDS / 60} minutes back on the board.`;
       status.className = "status-msg ok";
     } catch (e) {
