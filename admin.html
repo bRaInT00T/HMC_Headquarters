@@ -364,7 +364,10 @@
     renderKeeperList();
     renderTradeList();
     renderClockControls();
-    refreshBoard();
+    // goToPick() refreshes the board itself, so the idle path is already
+    // covered — refreshing again here would rebuild the whole board twice on
+    // every realtime event.
+    if (pickFormInUse) refreshBoard();
   }
 
   let yahooTeamOptions = []; // [{ name, manager }], populated by loadYahooTeams()
