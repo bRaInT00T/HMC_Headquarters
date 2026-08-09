@@ -80,6 +80,30 @@ function pickingSlotFor(round, slot, tradedPicks) {
   return traded ? Number(traded.toSlot) : slot;
 }
 
+// One listener on the container, not one per cell: renderBoard() replaces the
+// container's innerHTML on every realtime update, so per-cell handlers would need
+// re-attaching each time. The container itself survives those renders, which is
+// also why the listener is attached only once and reads the current callback off
+// the element — re-adding it per render would stack duplicates and fire the
+// callback N times on a single click. Enter and Space match the role="button"
+// the cells advertise.
+function wirePickCellClicks(container, onPickClick) {
+  container._onPickClick = onPickClick;
+  if (container.dataset.pickClicksWired) return;
+  container.dataset.pickClicksWired = "1";
+
+  const activate = (e) => {
+    const cell = e.target.closest("td.pick-cell.clickable");
+    if (!cell) return;
+    e.preventDefault();
+    container._onPickClick(Number(cell.dataset.overall));
+  };
+  container.addEventListener("click", activate);
+  container.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") activate(e);
+  });
+}
+
 // config: { rounds, teams: [{slot, owner, manager}, ...], traded_picks: [...] }
 // picks: array of rows from the draft_picks table (overall_pick, round, slot, team, player, position, nfl_team, source, entered_at)
 function renderBoard(containerId, config, picks, opts = {}) {
@@ -146,7 +170,15 @@ function renderBoard(containerId, config, picks, opts = {}) {
 
       if (pick) {
         const isKeeper = pick.source === "keeper";
-        html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}">
+        // Admin-only: passing onPickClick turns recorded picks into controls that
+        // load themselves back into the entry form. The public board passes no
+        // callback, so its cells stay inert markup.
+        const clickable = Boolean(opts.onPickClick);
+        const clickAttrs = clickable ? ` data-overall="${overall}" role="button" tabindex="0"` : "";
+        // Marks the cell the entry form is pointed at, so it's visible which pick
+        // a save would overwrite.
+        const editing = opts.editingOverall === overall ? " editing" : "";
+        html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
           <div class="player">${escapeHtml(pick.player || "")}</div>
           <div class="meta">${escapeHtml(pick.position || "")}${pick.nfl_team ? " - " + escapeHtml(pick.nfl_team) : ""}</div>
           ${viaHtml}
@@ -170,6 +202,7 @@ function renderBoard(containerId, config, picks, opts = {}) {
   }
   html += `</tbody></table>`;
   el.innerHTML = html;
+  if (opts.onPickClick) wirePickCellClicks(el, opts.onPickClick);
   startPickClocks();
 
   if (opts.onRendered) opts.onRendered({ nextOverall, onClock, totalPicks, picksMade });

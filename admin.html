@@ -315,6 +315,19 @@
       .subscribe();
   }
 
+  // The one place the admin board is rendered. editingOverall is read from the
+  // form rather than passed in, because the form and the board have to agree
+  // about which pick is loaded no matter which of them moved last.
+  function refreshBoard() {
+    // renderBoard() tolerates a null/undefined picks array internally
+    // ((picks || []) on every access) — only a missing config is fatal here.
+    if (!currentConfig) return;
+    renderBoard("board", currentConfig, currentPicks, {
+      onPickClick: editPick,
+      editingOverall: Number(document.getElementById("pick-number").value) || null
+    });
+  }
+
   async function loadAll() {
     const [{ data: cfgRows }, { data: picks }] = await Promise.all([
       sb.from("draft_config").select("*").eq("id", 1).limit(1),
@@ -353,7 +366,12 @@
     renderKeeperList();
     renderTradeList();
     renderClockControls();
-    renderBoard("board", currentConfig, currentPicks);
+    // goToPick() refreshes the board itself, so the idle path is normally
+    // already covered — refreshing again here would rebuild the whole board
+    // twice on every realtime event. But goToPick() returns early (without
+    // rendering) when there are no teams yet, so that case needs a render
+    // here too or the board is stuck on "Loading..." forever.
+    if (pickFormInUse || !currentConfig.teams.length) refreshBoard();
   }
 
   let yahooTeamOptions = []; // [{ name, manager }], populated by loadYahooTeams()
@@ -662,8 +680,13 @@
       // slot stays the board position; the team recorded is whoever actually
       // owns that pick, which differs once it's been traded.
       const team = teamNameForPick(round, slot);
+      // Editing a keeper must leave it a keeper: without this the row comes back
+      // as a manual pick and the save restarts everyone's clock, for a pick that
+      // was entered days before draft day.
       const result = await callAdminApi("/api/picks/add", {
-        round, slot, player, position, nflTeam, team, numTeams: currentConfig.teams.length
+        round, slot, player, position, nflTeam, team,
+        numTeams: currentConfig.teams.length,
+        source: loadedPickSource === "keeper" ? "keeper" : undefined
       });
       // Moves to the next open pick and clears Player/Position/NFL Team along
       // the way — important because those dropdowns now track the last player
@@ -713,7 +736,23 @@
     const slotSelect = document.getElementById("pick-slot");
     if ([...slotSelect.options].some((o) => o.value === String(slot))) slotSelect.value = String(slot);
     loadExistingPick(target);
+    refreshBoard();
   }
+
+  // Clicking a recorded pick on the Live Preview is the same act as typing its
+  // number into Pick # — the entry form is the editor, and /api/picks/add upserts
+  // on overall_pick, so saving overwrites in place. preventScroll keeps focus()
+  // from jumping the page and fighting the smooth scroll above it.
+  function editPick(overallPick) {
+    goToPick(overallPick);
+    document.querySelector("form.pick-form").scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("pick-player").focus({ preventScroll: true });
+  }
+
+  // The source of the row currently in the entry form ('keeper', 'yahoo',
+  // 'manual', or null when the pick is empty). Held so that re-saving a loaded
+  // pick preserves what kind of pick it was.
+  let loadedPickSource = null;
 
   // Editing is just re-entry: POST /api/picks/add upserts on overall_pick, so
   // loading a recorded pick back into the form and saving overwrites it.
@@ -736,6 +775,7 @@
         : "";
 
     if (!existing) {
+      loadedPickSource = null;
       playerInput.value = "";
       positionSelect.value = "";
       teamSelect.value = "";
@@ -744,6 +784,7 @@
       status.className = "status-msg";
       return;
     }
+    loadedPickSource = existing.source || null;
     playerInput.value = existing.player || "";
     positionSelect.value = POSITION_TO_SLOT_OPTION[existing.position] || "";
     teamSelect.value = NFL_TEAM_NAMES[existing.nfl_team] ? existing.nfl_team : "";
@@ -1103,7 +1144,7 @@
       // the realtime round-trip.
       if (currentConfig) currentConfig.clock_state = result.clockState || {};
       renderClockControls();
-      renderBoard("board", currentConfig, currentPicks);
+      refreshBoard();
       status.textContent = action === "pause" ? "Clock paused." : "Clock resumed.";
       status.className = "status-msg ok";
     } catch (e) {
@@ -1118,7 +1159,7 @@
       const result = await callAdminApi("/api/clock/set", { action: "reset" });
       if (currentConfig) currentConfig.clock_state = result.clockState || {};
       renderClockControls();
-      renderBoard("board", currentConfig, currentPicks);
+      refreshBoard();
       status.textContent = `Clock reset — a full ${PICK_CLOCK_SECONDS / 60} minutes back on the board.`;
       status.className = "status-msg ok";
     } catch (e) {
