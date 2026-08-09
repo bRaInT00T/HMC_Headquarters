@@ -676,8 +676,13 @@
       // slot stays the board position; the team recorded is whoever actually
       // owns that pick, which differs once it's been traded.
       const team = teamNameForPick(round, slot);
+      // Editing a keeper must leave it a keeper: without this the row comes back
+      // as a manual pick and the save restarts everyone's clock, for a pick that
+      // was entered days before draft day.
       const result = await callAdminApi("/api/picks/add", {
-        round, slot, player, position, nflTeam, team, numTeams: currentConfig.teams.length
+        round, slot, player, position, nflTeam, team,
+        numTeams: currentConfig.teams.length,
+        source: loadedPickSource === "keeper" ? "keeper" : undefined
       });
       // Moves to the next open pick and clears Player/Position/NFL Team along
       // the way — important because those dropdowns now track the last player
@@ -740,6 +745,11 @@
     document.getElementById("pick-player").focus({ preventScroll: true });
   }
 
+  // The source of the row currently in the entry form ('keeper', 'yahoo',
+  // 'manual', or null when the pick is empty). Held so that re-saving a loaded
+  // pick preserves what kind of pick it was.
+  let loadedPickSource = null;
+
   // Editing is just re-entry: POST /api/picks/add upserts on overall_pick, so
   // loading a recorded pick back into the form and saving overwrites it.
   function loadExistingPick(overallPick) {
@@ -761,6 +771,7 @@
         : "";
 
     if (!existing) {
+      loadedPickSource = null;
       playerInput.value = "";
       positionSelect.value = "";
       teamSelect.value = "";
@@ -769,6 +780,7 @@
       status.className = "status-msg";
       return;
     }
+    loadedPickSource = existing.source || null;
     playerInput.value = existing.player || "";
     positionSelect.value = POSITION_TO_SLOT_OPTION[existing.position] || "";
     teamSelect.value = NFL_TEAM_NAMES[existing.nfl_team] ? existing.nfl_team : "";
