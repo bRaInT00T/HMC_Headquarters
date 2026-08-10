@@ -184,6 +184,18 @@
     WSH: "Washington Commanders"
   };
 
+  // Same idea for the position — read out in full, the way it's called at a
+  // real podium. Covers Yahoo's codes plus the IDP ones, in case the league
+  // ever adds them.
+  const POSITION_NAMES = {
+    QB: "Quarterback", RB: "Running Back", WR: "Wide Receiver", TE: "Tight End",
+    K: "Kicker", PK: "Kicker", FB: "Fullback", OL: "Offensive Lineman",
+    DEF: "Defense", DST: "Defense", "D/ST": "Defense", "DEF/ST": "Defense",
+    DL: "Defensive Lineman", DE: "Defensive End", DT: "Defensive Tackle",
+    LB: "Linebacker", DB: "Defensive Back", CB: "Cornerback", S: "Safety",
+    "W/R": "Flex", "W/R/T": "Flex", FLEX: "Flex"
+  };
+
   const announceQueue = [];
   const announcedOverall = new Set();
   let announceSeeded = false;
@@ -272,12 +284,17 @@
     return NFL_TEAM_NAMES[key] || abbr || "";
   }
 
+  function positionName(abbr) {
+    const key = String(abbr || "").toUpperCase();
+    return POSITION_NAMES[key] || abbr || "";
+  }
+
   // The sentence, split so the player's name can be highlighted while still
   // typing as one continuous string.
   function announceSegments(pick) {
     const nfl = nflTeamName(pick.nfl_team);
     let lead = `With the ${ordinal(pick.overall_pick)} pick of the ${seasonYear} Handsome Men's Club draft, ` +
-      `${teamNameForPick(pick)} select ${pick.position || "a player"}`;
+      `${teamNameForPick(pick)} select ${positionName(pick.position) || "a player"}`;
     if (nfl) lead += ` from the ${nfl}`;
     return [
       { text: lead + ", ", cls: "" },
