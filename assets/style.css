@@ -882,10 +882,11 @@ footer.site-footer {
   /* The art is pixel-scaled on purpose — smoothing it would mush the pixels. */
   image-rendering: pixelated;
   filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.6));
-  /* The mouth sits below the middle of the portrait, so lift the whole frame to
-     bring it level with the speech bubble's tail. A percentage translate scales
-     with the image, and being a transform it doesn't disturb the layout. */
-  transform: translateY(-11%);
+  /* Diffing the two frames puts the mouth at ~48% of the portrait's height, so
+     nudging it down 2% lands the mouth on the row's centre line — which is
+     exactly where the bubble's tail sits, whatever height the bubble ends up.
+     A percentage translate scales with the image and doesn't disturb layout. */
+  transform: translateY(2%);
   flex: none;
 }
 
@@ -902,21 +903,25 @@ footer.site-footer {
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
 }
 /* Speech-bubble tail, aimed back at the commissioner's mouth. Two triangles
-   stacked: the border colour behind, the panel fill one pixel in front. */
+   stacked: the border colour behind, the panel fill one pixel in front. The
+   negative margin pulls the triangle up by its own half-height, so the tail's
+   point — not its top edge — sits on the bubble's centre line and stays in line
+   with the mouth however many lines the sentence runs to. */
 .pick-announce .card::before,
 .pick-announce .card::after {
   content: "";
   position: absolute;
-  top: 46%;
+  top: 50%;
   right: 100%;
   border: 13px solid transparent;
   border-right-color: var(--border);
+  margin-top: -13px;
 }
 .pick-announce .card::after {
   border-width: 12px;
   border-right-color: var(--bg-panel);
   margin-right: -1px;
-  margin-top: 1px;
+  margin-top: -12px;
 }
 .pick-announce .card .eyebrow {
   color: var(--accent);
