@@ -166,27 +166,9 @@
   const HOLD_MS = 3500;    // how long the finished sentence stays up
   const FADE_MS = 450;     // matches the .leaving animation in style.css
 
-  // draft_picks.nfl_team holds the abbreviation Yahoo uses; "from the Buffalo
-  // Bills" reads better out loud than "from the BUF". Anything unrecognised
-  // (or already spelled out) is announced as-is.
-  const NFL_TEAM_NAMES = {
-    ARI: "Arizona Cardinals", ATL: "Atlanta Falcons", BAL: "Baltimore Ravens",
-    BUF: "Buffalo Bills", CAR: "Carolina Panthers", CHI: "Chicago Bears",
-    CIN: "Cincinnati Bengals", CLE: "Cleveland Browns", DAL: "Dallas Cowboys",
-    DEN: "Denver Broncos", DET: "Detroit Lions", GB: "Green Bay Packers",
-    HOU: "Houston Texans", IND: "Indianapolis Colts", JAX: "Jacksonville Jaguars",
-    JAC: "Jacksonville Jaguars", KC: "Kansas City Chiefs", LV: "Las Vegas Raiders",
-    LAC: "Los Angeles Chargers", LAR: "Los Angeles Rams", MIA: "Miami Dolphins",
-    MIN: "Minnesota Vikings", NE: "New England Patriots", NO: "New Orleans Saints",
-    NYG: "New York Giants", NYJ: "New York Jets", PHI: "Philadelphia Eagles",
-    PIT: "Pittsburgh Steelers", SF: "San Francisco 49ers", SEA: "Seattle Seahawks",
-    TB: "Tampa Bay Buccaneers", TEN: "Tennessee Titans", WAS: "Washington Commanders",
-    WSH: "Washington Commanders"
-  };
-
-  // Same idea for the position — read out in full, the way it's called at a
-  // real podium. Covers Yahoo's codes plus the IDP ones, in case the league
-  // ever adds them.
+  // Positions are read out in full, the way they're called at a real podium
+  // (the NFL team gets the same treatment via nflTeamName() in draftboard.js).
+  // Covers Yahoo's codes plus the IDP ones, in case the league ever adds them.
   const POSITION_NAMES = {
     QB: "Quarterback", RB: "Running Back", WR: "Wide Receiver", TE: "Tight End",
     K: "Kicker", PK: "Kicker", FB: "Fullback", OL: "Offensive Lineman",
@@ -277,11 +259,6 @@
     if (pick.team) return pick.team;
     const team = (config.teams || []).find((t) => t.slot === pick.slot);
     return team ? team.owner : `Slot ${pick.slot}`;
-  }
-
-  function nflTeamName(abbr) {
-    const key = String(abbr || "").toUpperCase();
-    return NFL_TEAM_NAMES[key] || abbr || "";
   }
 
   function positionName(abbr) {

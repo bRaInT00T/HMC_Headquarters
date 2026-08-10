@@ -2,6 +2,29 @@
 // realtime read-only) and admin.html (entry form + live preview).
 // Field names match the Supabase draft_picks table (snake_case) directly.
 
+// draft_picks.nfl_team holds the abbreviation Yahoo uses. Both the board cells
+// and draft.html's spoken announcement spell it out — "Buffalo Bills" rather
+// than "BUF". Anything unrecognised (or already spelled out) passes through.
+const NFL_TEAM_NAMES = {
+  ARI: "Arizona Cardinals", ATL: "Atlanta Falcons", BAL: "Baltimore Ravens",
+  BUF: "Buffalo Bills", CAR: "Carolina Panthers", CHI: "Chicago Bears",
+  CIN: "Cincinnati Bengals", CLE: "Cleveland Browns", DAL: "Dallas Cowboys",
+  DEN: "Denver Broncos", DET: "Detroit Lions", GB: "Green Bay Packers",
+  HOU: "Houston Texans", IND: "Indianapolis Colts", JAX: "Jacksonville Jaguars",
+  JAC: "Jacksonville Jaguars", KC: "Kansas City Chiefs", LV: "Las Vegas Raiders",
+  LAC: "Los Angeles Chargers", LAR: "Los Angeles Rams", MIA: "Miami Dolphins",
+  MIN: "Minnesota Vikings", NE: "New England Patriots", NO: "New Orleans Saints",
+  NYG: "New York Giants", NYJ: "New York Jets", PHI: "Philadelphia Eagles",
+  PIT: "Pittsburgh Steelers", SF: "San Francisco 49ers", SEA: "Seattle Seahawks",
+  TB: "Tampa Bay Buccaneers", TEN: "Tennessee Titans", WAS: "Washington Commanders",
+  WSH: "Washington Commanders"
+};
+
+function nflTeamName(abbr) {
+  const key = String(abbr || "").toUpperCase();
+  return NFL_TEAM_NAMES[key] || abbr || "";
+}
+
 function slotForOverallPick(overallPick, numTeams) {
   const round = Math.ceil(overallPick / numTeams);
   const posInRound = ((overallPick - 1) % numTeams) + 1;
@@ -198,7 +221,7 @@ function renderBoard(containerId, config, picks, opts = {}) {
         const editing = opts.editingOverall === overall ? " editing" : "";
         html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
           <div class="player">${escapeHtml(pick.player || "")}</div>
-          <div class="meta">${escapeHtml(pick.position || "")}${pick.nfl_team ? " - " + escapeHtml(pick.nfl_team) : ""}</div>
+          <div class="meta">${escapeHtml(pick.position || "")}${pick.nfl_team ? " - " + escapeHtml(nflTeamName(pick.nfl_team)) : ""}</div>
           ${viaHtml}
           <div class="meta">${isKeeper ? '<span class="keeper-tag">Keeper</span> · ' : ""}Pick #${overall}${pick.source === "yahoo" ? " · synced" : ""}</div>
         </td>`;
