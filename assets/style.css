@@ -1028,3 +1028,135 @@ footer.site-footer {
   .pick-announce.leaving { animation: none; }
   .pick-announce .card .caret { animation: none; }
 }
+
+/* ── Mock draft panel (draft.html) ─────────────────────────────────────────
+   Same card treatment as the available-player search above it. Hidden entirely
+   on a project whose Supabase doesn't have the mock tables yet. */
+.mock-draft {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+.mock-draft[hidden] { display: none; }
+.mock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mock-draft h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent);
+}
+.mock-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mock-status {
+  margin: 10px 0 0;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+.mock-entry { margin-top: 14px; }
+.mock-entry[hidden] { display: none; }
+.mock-on-clock {
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+.mock-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mock-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 260px;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+/* The dropdown is positioned against this, not the label, so it lines up with
+   the input rather than the input plus its caption. */
+.mock-autocomplete { position: relative; }
+.mock-autocomplete input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.mock-autocomplete input:focus { outline: none; border-color: var(--accent); }
+.mock-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+.mock-suggestions[hidden] { display: none; }
+.mock-suggestion {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.mock-suggestion:last-child { border-bottom: none; }
+.mock-suggestion:hover { background: var(--bg-panel); }
+.mock-suggestion .meta { color: var(--text-dim); font-size: 0.75rem; }
+.mock-note {
+  margin: 10px 0 0;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+.mock-note.error { color: var(--danger); }
+
+/* Sits directly above the board so it's impossible to mistake a rehearsal for
+   the real thing. */
+.mock-banner {
+  background: #201c17;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.mock-banner[hidden] { display: none; }
+.mock-banner strong { color: var(--accent); }
+
+/* .btn sets display:inline-block, which outranks the browser's own
+   [hidden] { display: none } — without this a hidden button stays visible. */
+.btn[hidden] { display: none; }

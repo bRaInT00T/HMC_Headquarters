@@ -17,6 +17,20 @@ function adminHeaders() {
   return { "Content-Type": "application/json", "x-admin-password": pw };
 }
 
+// The mock-draft routes take no password — any league member can run a
+// rehearsal from the public board — so they get their own caller rather than
+// sending an empty x-admin-password header through callAdminApi.
+async function callPublicApi(path, body) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {})
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `${path} failed: ${res.status}`);
+  return json;
+}
+
 async function callAdminApi(path, body) {
   const res = await fetch(path, { method: "POST", headers: adminHeaders(), body: JSON.stringify(body || {}) });
   const json = await res.json().catch(() => ({}));

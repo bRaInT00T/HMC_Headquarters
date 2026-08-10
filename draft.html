@@ -35,6 +35,38 @@
 
   <div class="draft-meta" id="draft-meta"></div>
 
+  <!-- Mock draft: a rehearsal anyone in the league can start from this page.
+       Writes to its own tables, so the real board is never touched. -->
+  <section class="mock-draft" id="mock-panel">
+    <div class="mock-head">
+      <h2>Mock draft</h2>
+      <div class="mock-actions">
+        <button type="button" class="btn" id="mock-start">Start a mock draft</button>
+        <button type="button" class="btn secondary" id="mock-undo" hidden>Undo last pick</button>
+        <button type="button" class="btn danger" id="mock-stop" hidden>End mock draft</button>
+      </div>
+    </div>
+    <p class="mock-status" id="mock-status">
+      A practice run using this league's draft order. Picks go to a separate board that anyone can
+      reset — the real draft is never touched.
+    </p>
+
+    <div class="mock-entry" id="mock-entry" hidden>
+      <div class="mock-on-clock" id="mock-on-clock"></div>
+      <div class="mock-form">
+        <label>
+          Player
+          <div class="mock-autocomplete">
+            <input type="text" id="mock-player" placeholder="e.g. Ja'Marr Chase" autocomplete="off" />
+            <div class="mock-suggestions" id="mock-suggestions" hidden></div>
+          </div>
+        </label>
+        <button type="button" class="btn" id="mock-submit">Record pick</button>
+      </div>
+      <p class="mock-note" id="mock-note"></p>
+    </div>
+  </section>
+
   <section class="available-players">
     <h2>Who's still available?</h2>
     <div class="available-controls">
@@ -45,6 +77,10 @@
     <p class="available-status" id="avail-status">Type a name, or pick a position/team, to see who hasn't been drafted yet.</p>
     <div class="available-results" id="avail-results" hidden></div>
   </section>
+
+  <div class="mock-banner" id="mock-banner" hidden>
+    <strong>Mock draft in progress</strong> — this is a rehearsal board. The real draft is untouched.
+  </div>
 
   <div class="board-wrap">
     <div id="board">Loading draft board…</div>
@@ -84,7 +120,12 @@
 <script src="js/search.js"></script>
 <script>
   let sb = null;
+  // The league's own configuration — draft order, rounds, traded picks. Shared
+  // by the real board and the mock, which only differ in their picks and clock.
   let config = null;
+  // Whatever is currently ON the board: the real picks, or the mock's. Every
+  // consumer below (announcements, available-player search, the clock) reads
+  // this, so a mock behaves exactly like the real thing.
   let currentPicks = [];
   let seasonYear = String(new Date().getFullYear());
 
@@ -117,29 +158,48 @@
   // actually sets it running.
   function renderCurrentBoard() {
     if (!config) return;
-    renderBoard("board", config, currentPicks, {
+    // A mock runs its own clock in mock_draft_state, so the real
+    // draft_config.clock_state is left alone while one is under way.
+    const boardConfig = mockActive() ? { ...config, clock_state: mockState.clock_state || {} } : config;
+    renderBoard("board", boardConfig, currentPicks, {
       clockHeld: announceHoldingClock,
       clockDelayMs: announceClockDelayMs,
-      onRendered: ({ picksMade, totalPicks, onClock }) => updateStatus(picksMade, totalPicks, onClock, config.teams)
+      onRendered: (info) => {
+        updateStatus(info.picksMade, info.totalPicks, info.onClock, config.teams);
+        renderMockEntry(info);
+      }
     });
   }
 
   async function loadAndRender() {
-    const [{ data: cfgRows, error: cfgErr }, { data: picks, error: pickErr }] = await Promise.all([
+    const [{ data: cfgRows, error: cfgErr }, { data: picks, error: pickErr }, mock] = await Promise.all([
       sb.from("draft_config").select("*").eq("id", 1).limit(1),
-      sb.from("draft_picks").select("*").order("overall_pick")
+      sb.from("draft_picks").select("*").order("overall_pick"),
+      loadMock()
     ]);
     if (cfgErr) throw cfgErr;
     if (pickErr) throw pickErr;
 
     const row = cfgRows[0];
     config = toBoardConfig(row);
-    currentPicks = picks || [];
+    // With a mock running, the mock's picks are the board — for everyone, so
+    // the whole league watches the same rehearsal.
+    currentPicks = (mock.active ? mock.picks : picks) || [];
     // season is free text ("2026", "2026 Season", …) — the announcement wants
     // just the year, and falls back to the calendar year if there isn't one.
     const seasonMatch = String(row.season || "").match(/\d{4}/);
     if (seasonMatch) seasonYear = seasonMatch[0];
 
+    // Switching between the real board and a mock swaps the whole set of picks
+    // out. Reset the announcement bookkeeping so the new board is seeded rather
+    // than read out pick by pick, and so pick #1 of a mock still announces even
+    // though pick #1 of the real draft already has.
+    const source = mock.active ? "mock" : "real";
+    if (source !== announceSource) {
+      announceSource = source;
+      announcedOverall.clear();
+      announceSeeded = false;
+    }
     queueAnnouncements(currentPicks);
 
     document.getElementById("draft-meta").innerHTML = `
@@ -148,11 +208,243 @@
       <div><strong>Format</strong><br>${escapeHtml(row.format)} · ${row.rounds} rounds</div>
     `;
 
+    renderMockPanel();
     renderCurrentBoard();
 
     // A pick just landed — re-run the current query so the drafted player
     // drops out of the available list without the user retyping.
     if (availQuerySeq > 0) runAvailableSearch();
+  }
+
+  // ── Mock draft ────────────────────────────────────────────────────────────
+  // A rehearsal any league member can start from this page. It uses the real
+  // draft order but its own picks, clock and tables, so it can be reset or
+  // abandoned without consequence. See supabase/schema.sql and api/mock/*.
+  let mockState = { active: false, clock_state: {} };
+  let mockAvailable = true; // false until supabase/schema.sql has been re-run
+  let mockBusy = false;
+
+  function mockActive() {
+    return Boolean(mockState && mockState.active);
+  }
+
+  async function loadMock() {
+    if (!mockAvailable) return { active: false, picks: [] };
+    try {
+      const [{ data: stateRows, error: stateErr }, { data: picks, error: pickErr }] = await Promise.all([
+        sb.from("mock_draft_state").select("*").eq("id", 1).limit(1),
+        sb.from("mock_draft_picks").select("*").order("overall_pick")
+      ]);
+      if (stateErr) throw stateErr;
+      if (pickErr) throw pickErr;
+      mockState = (stateRows && stateRows[0]) || { active: false, clock_state: {} };
+      return { active: mockActive(), picks: picks || [] };
+    } catch (e) {
+      // The mock tables are an additive migration — a project that hasn't run
+      // the updated schema.sql yet should still show its real board, just
+      // without the mock panel.
+      mockAvailable = false;
+      mockState = { active: false, clock_state: {} };
+      console.warn("Mock draft tables unavailable:", e.message);
+      return { active: false, picks: [] };
+    }
+  }
+
+  function renderMockPanel() {
+    const panel = document.getElementById("mock-panel");
+    panel.hidden = !mockAvailable;
+    if (!mockAvailable) return;
+
+    const active = mockActive();
+    document.getElementById("mock-banner").hidden = !active;
+    document.getElementById("mock-start").hidden = active;
+    document.getElementById("mock-undo").hidden = !active;
+    document.getElementById("mock-stop").hidden = !active;
+    document.getElementById("mock-entry").hidden = !active;
+    document.getElementById("mock-status").textContent = active
+      ? "Rehearsal in progress — everyone watching this page sees it live. Ending it clears the board."
+      : "A practice run using this league's draft order. Picks go to a separate board that anyone can reset — the real draft is never touched.";
+  }
+
+  // Fed from renderBoard()'s onRendered, so the entry form always points at the
+  // pick the board itself considers next.
+  let mockOnClock = null;
+  function renderMockEntry(info) {
+    if (!mockAvailable || !mockActive()) {
+      mockOnClock = null;
+      return;
+    }
+    mockOnClock = info.onClock ? { ...info.onClock, overall: info.nextOverall } : null;
+    const label = document.getElementById("mock-on-clock");
+    if (!mockOnClock) {
+      label.textContent = "Mock draft complete — every pick is in.";
+      document.getElementById("mock-submit").disabled = true;
+      return;
+    }
+    document.getElementById("mock-submit").disabled = false;
+    const team = config.teams[mockOnClock.slot - 1];
+    label.innerHTML = `<span class="live-dot"></span>Pick #${mockOnClock.overall} · Round ${mockOnClock.round} —
+      <strong>${escapeHtml(team ? team.owner : "Slot " + mockOnClock.slot)}</strong> is on the clock`;
+  }
+
+  function setMockNote(text, isError) {
+    const note = document.getElementById("mock-note");
+    note.textContent = text || "";
+    note.classList.toggle("error", Boolean(isError));
+  }
+
+  async function runMockAction(button, work) {
+    if (mockBusy) return;
+    mockBusy = true;
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = "Working…";
+    try {
+      await work();
+      setMockNote("");
+      await loadAndRender();
+    } catch (e) {
+      setMockNote(e.message, true);
+    } finally {
+      mockBusy = false;
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
+
+  async function submitMockPick() {
+    if (!mockOnClock) return;
+    const input = document.getElementById("mock-player");
+    const player = input.value.trim();
+    if (!player) {
+      setMockNote("Type a player name first.", true);
+      input.focus();
+      return;
+    }
+    // Position and NFL team come from the suggestion the user picked; typing a
+    // name freehand still records the pick, just without them.
+    const chosen = mockChosenPlayer && mockChosenPlayer.full_name === player ? mockChosenPlayer : null;
+    await runMockAction(document.getElementById("mock-submit"), async () => {
+      await callPublicApi("/api/mock/pick", {
+        round: mockOnClock.round,
+        slot: mockOnClock.slot,
+        numTeams: config.teams.length,
+        team: (config.teams[mockOnClock.slot - 1] || {}).owner || `Slot ${mockOnClock.slot}`,
+        player,
+        position: chosen ? chosen.position : "",
+        nflTeam: chosen ? chosen.team : ""
+      });
+      input.value = "";
+      mockChosenPlayer = null;
+      hideMockSuggestions();
+    });
+  }
+
+  // ── Mock pick-entry autocomplete ──────────────────────────────────────────
+  // Deliberately simpler than admin.html's: it queries the same nfl_players
+  // cache, but a rehearsal doesn't need position/team filters or roster-slot
+  // rules, so this is one debounced query and a list.
+  const MOCK_SUGGESTION_LIMIT = 8;
+  // Individual players who can actually be drafted. nfl_players carries the
+  // whole league — linemen, defenders, and ~8k retired players with position
+  // "UNK" — none of which belong in a fantasy draft. Mirrors admin.html's
+  // DRAFTABLE_POSITIONS; kickers come across as "PK".
+  const MOCK_DRAFTABLE_POSITIONS = ["QB", "RB", "FB", "WR", "TE", "PK", "K"];
+  let mockChosenPlayer = null;
+  let mockSearchSeq = 0;
+  let mockSearchTimer = null;
+
+  function hideMockSuggestions() {
+    const box = document.getElementById("mock-suggestions");
+    box.hidden = true;
+    box.innerHTML = "";
+  }
+
+  async function searchMockPlayers() {
+    const q = document.getElementById("mock-player").value.trim();
+    if (q.length < 2) {
+      hideMockSuggestions();
+      return;
+    }
+    const seq = ++mockSearchSeq;
+    try {
+      const { data, error } = await sb
+        .from("nfl_players")
+        .select("full_name, position, team")
+        .in("position", MOCK_DRAFTABLE_POSITIONS)
+        .ilike("full_name", `%${q}%`)
+        .order("full_name")
+        .limit(MOCK_SUGGESTION_LIMIT + 20);
+      if (error) throw error;
+      if (seq !== mockSearchSeq) return;
+
+      const drafted = new Set(currentPicks.map((p) => (p.player || "").toLowerCase()));
+      // Team defenses are drafted as a team, so they aren't rows in
+      // nfl_players — matched in memory against the shared team-name map.
+      const defenses = Object.entries(NFL_TEAM_NAMES)
+        .filter(([, name]) => name.toLowerCase().includes(q.toLowerCase()))
+        .map(([abbr, name]) => ({ full_name: name, position: "DEF", team: abbr }));
+      const rows = [...defenses, ...(data || [])]
+        .filter((p) => !drafted.has((p.full_name || "").toLowerCase()))
+        .slice(0, MOCK_SUGGESTION_LIMIT);
+      const box = document.getElementById("mock-suggestions");
+      if (!rows.length) {
+        hideMockSuggestions();
+        return;
+      }
+      box.innerHTML = rows
+        .map(
+          (p, i) => `<button type="button" class="mock-suggestion" data-index="${i}">
+            <span class="name">${escapeHtml(p.full_name)}</span>
+            <span class="meta">${escapeHtml(p.position || "")}${p.team ? " · " + escapeHtml(nflTeamName(p.team)) : ""}</span>
+          </button>`
+        )
+        .join("");
+      box._rows = rows;
+      box.hidden = false;
+    } catch (e) {
+      if (seq !== mockSearchSeq) return;
+      hideMockSuggestions();
+    }
+  }
+
+  function wireMockDraft() {
+    document.getElementById("mock-start").addEventListener("click", (e) =>
+      runMockAction(e.currentTarget, () => callPublicApi("/api/mock/start"))
+    );
+    document.getElementById("mock-undo").addEventListener("click", (e) =>
+      runMockAction(e.currentTarget, () => callPublicApi("/api/mock/undo"))
+    );
+    document.getElementById("mock-stop").addEventListener("click", (e) => {
+      if (!window.confirm("End the mock draft and clear its board?")) return;
+      runMockAction(e.currentTarget, () => callPublicApi("/api/mock/stop"));
+    });
+    document.getElementById("mock-submit").addEventListener("click", submitMockPick);
+
+    const input = document.getElementById("mock-player");
+    input.addEventListener("input", () => {
+      mockChosenPlayer = null;
+      clearTimeout(mockSearchTimer);
+      mockSearchTimer = setTimeout(searchMockPlayers, 200);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submitMockPick();
+      } else if (e.key === "Escape") {
+        hideMockSuggestions();
+      }
+    });
+
+    const box = document.getElementById("mock-suggestions");
+    box.addEventListener("click", (e) => {
+      const button = e.target.closest(".mock-suggestion");
+      if (!button || !box._rows) return;
+      mockChosenPlayer = box._rows[Number(button.dataset.index)];
+      input.value = mockChosenPlayer.full_name;
+      hideMockSuggestions();
+      input.focus();
+    });
   }
 
   // ── Pick announcement ─────────────────────────────────────────────────────
@@ -180,6 +472,8 @@
 
   const announceQueue = [];
   const announcedOverall = new Set();
+  // "real" or "mock" — which board the announced set belongs to.
+  let announceSource = null;
   let announceSeeded = false;
   let announcing = false;
   // The team on the clock shouldn't be burning its two minutes while the pick
@@ -270,8 +564,20 @@
   // typing as one continuous string.
   function announceSegments(pick) {
     const nfl = nflTeamName(pick.nfl_team);
-    let lead = `With the ${ordinal(pick.overall_pick)} pick of the ${seasonYear} Handsome Men's Club draft, ` +
-      `${teamNameForPick(pick)} select ${positionName(pick.position) || "a player"}`;
+    const opening = `With the ${ordinal(pick.overall_pick)} pick of the ${seasonYear} Handsome Men's Club draft, ` +
+      `${teamNameForPick(pick)} select `;
+
+    // A team defense is the team, so "Defense from the Buffalo Bills, Buffalo
+    // Bills" says it twice. Read it as one thing instead.
+    if (String(pick.position || "").toUpperCase().startsWith("DEF") || pick.position === "D/ST") {
+      return [
+        { text: opening + "the ", cls: "" },
+        { text: pick.player || nfl || "—", cls: "player" },
+        { text: " Defense", cls: "" }
+      ];
+    }
+
+    let lead = opening + (positionName(pick.position) || "a player");
     if (nfl) lead += ` from the ${nfl}`;
     return [
       { text: lead + ", ", cls: "" },
@@ -578,6 +884,7 @@
     }
     wireAvailableSearch();
     wireAnnouncement();
+    wireMockDraft();
     try {
       await loadAndRender();
     } catch (e) {
@@ -585,10 +892,17 @@
       return;
     }
 
-    sb.channel("draft-board-live")
+    const channel = sb
+      .channel("draft-board-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "draft_picks" }, () => loadAndRender())
-      .on("postgres_changes", { event: "*", schema: "public", table: "draft_config" }, () => loadAndRender())
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "draft_config" }, () => loadAndRender());
+    // Only worth subscribing to the mock tables if this project has them.
+    if (mockAvailable) {
+      channel
+        .on("postgres_changes", { event: "*", schema: "public", table: "mock_draft_picks" }, () => loadAndRender())
+        .on("postgres_changes", { event: "*", schema: "public", table: "mock_draft_state" }, () => loadAndRender());
+    }
+    channel.subscribe();
   }
 
   init();
