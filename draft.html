@@ -54,8 +54,17 @@
     <img class="commish" id="announce-commish" src="assets/commish00.png" alt="" />
     <div class="card">
       <div class="eyebrow">The commissioner is at the podium</div>
-      <div class="line" id="announce-line"></div>
-      <div class="dismiss">Click anywhere to dismiss</div>
+      <!-- The ghost holds the whole sentence from the first frame so the card is
+           laid out at its final size; the typed copy sits on top of it. Without
+           it the box grows line by line as the text arrives. -->
+      <div class="line">
+        <span class="ghost" id="announce-ghost" aria-hidden="true"></span>
+        <span class="typed" id="announce-typed"></span>
+      </div>
+      <div class="card-foot">
+        <span class="dismiss">Click anywhere to dismiss</span>
+        <button type="button" class="mute" id="announce-mute" aria-pressed="false">🔊 Sound on</button>
+      </div>
     </div>
   </div>
 
@@ -173,6 +182,61 @@
   let mouthTimer = null;
   let typeTimer = null;
 
+  // ── Announcement audio ────────────────────────────────────────────────────
+  // Synthesised with WebAudio rather than shipping sound files: two short tones
+  // as the commissioner steps up, then a soft tick as he talks. Browsers keep an
+  // AudioContext suspended until the page has been interacted with, so it's
+  // created lazily and resumed on the first gesture — before that, announcements
+  // simply play silent.
+  const MUTE_KEY = "hmc-announce-muted";
+  let audioCtx = null;
+  let muted = localStorage.getItem(MUTE_KEY) === "1";
+
+  function getAudioCtx() {
+    if (muted) return null;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx.state === "running" ? audioCtx : null;
+  }
+
+  function tone(freq, startOffset, duration, peak, type = "sine") {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const at = ctx.currentTime + startOffset;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    // Ramped rather than switched on/off — a square edge on the gain is an
+    // audible click.
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(peak, at + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(at);
+    osc.stop(at + duration + 0.02);
+  }
+
+  // Public-address two-note chime that opens the announcement.
+  function playChime() {
+    tone(784, 0, 0.28, 0.18, "triangle");   // G5
+    tone(1047, 0.16, 0.42, 0.16, "triangle"); // C6
+  }
+
+  function playTick() {
+    tone(2100, 0, 0.03, 0.035, "square");
+  }
+
+  function setMuted(next) {
+    muted = next;
+    localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+    const button = document.getElementById("announce-mute");
+    button.textContent = muted ? "🔇 Sound off" : "🔊 Sound on";
+    button.setAttribute("aria-pressed", muted ? "true" : "false");
+  }
+
   function ordinal(n) {
     // 11th/12th/13th are the exceptions to the last-digit rule.
     const teen = n % 100;
@@ -247,7 +311,8 @@
 
     announcing = true;
     const overlay = document.getElementById("pick-announce");
-    const line = document.getElementById("announce-line");
+    const ghost = document.getElementById("announce-ghost");
+    const typed = document.getElementById("announce-typed");
     const commish = document.getElementById("announce-commish");
     const segments = announceSegments(pick);
     const full = segments.reduce((n, s) => n + s.text.length, 0);
@@ -257,18 +322,24 @@
     overlay.classList.remove("leaving");
     overlay.hidden = false;
 
+    const segmentHtml = (limit) => {
+      let left = limit;
+      return segments
+        .map((s) => {
+          const take = Math.max(0, Math.min(s.text.length, left));
+          left -= s.text.length;
+          if (!take) return "";
+          const chunk = escapeHtml(s.text.slice(0, take));
+          return s.cls ? `<span class="${s.cls}">${chunk}</span>` : chunk;
+        })
+        .join("");
+    };
+
+    // Reserve the final layout before a single character is visible.
+    ghost.innerHTML = segmentHtml(full) + `<span class="caret">&nbsp;</span>`;
+
     const render = (shown, done) => {
-      let left = shown;
-      line.innerHTML =
-        segments
-          .map((s) => {
-            const take = Math.max(0, Math.min(s.text.length, left));
-            left -= s.text.length;
-            if (!take) return "";
-            const chunk = escapeHtml(s.text.slice(0, take));
-            return s.cls ? `<span class="${s.cls}">${chunk}</span>` : chunk;
-          })
-          .join("") + `<span class="caret${done ? " done" : ""}">&nbsp;</span>`;
+      typed.innerHTML = segmentHtml(shown) + `<span class="caret${done ? " done" : ""}">&nbsp;</span>`;
     };
 
     const finish = () => {
@@ -286,6 +357,7 @@
       return;
     }
 
+    playChime();
     render(0, false);
     let frame = 0;
     mouthTimer = setInterval(() => {
@@ -297,6 +369,9 @@
     typeTimer = setInterval(() => {
       shown++;
       render(shown, false);
+      // One tick per character is a machine-gun rattle; every third reads as
+      // speech without being exhausting.
+      if (shown % 3 === 0) playTick();
       if (shown >= full) finish();
     }, TYPE_MS);
   }
@@ -312,6 +387,20 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && !overlay.hidden) hideAnnouncement();
     });
+
+    const mute = document.getElementById("announce-mute");
+    setMuted(muted);
+    mute.addEventListener("click", (e) => {
+      e.stopPropagation(); // the overlay's own click handler would dismiss it
+      setMuted(!muted);
+    });
+
+    // Autoplay policy keeps the AudioContext suspended until the page has been
+    // interacted with; the first click/key anywhere unlocks it so a pick landing
+    // later isn't silent.
+    const unlock = () => getAudioCtx();
+    document.addEventListener("pointerdown", unlock, { once: true });
+    document.addEventListener("keydown", unlock, { once: true });
   }
 
   // ── Available-player search ───────────────────────────────────────────────
