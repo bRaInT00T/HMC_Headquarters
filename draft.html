@@ -112,6 +112,18 @@
     }
   }
 
+  // Also called on its own when the announcement starts and finishes — the pick
+  // clock is held while the commissioner reads, and the re-render is what
+  // actually sets it running.
+  function renderCurrentBoard() {
+    if (!config) return;
+    renderBoard("board", config, currentPicks, {
+      clockHeld: announceHoldingClock,
+      clockDelayMs: announceClockDelayMs,
+      onRendered: ({ picksMade, totalPicks, onClock }) => updateStatus(picksMade, totalPicks, onClock, config.teams)
+    });
+  }
+
   async function loadAndRender() {
     const [{ data: cfgRows, error: cfgErr }, { data: picks, error: pickErr }] = await Promise.all([
       sb.from("draft_config").select("*").eq("id", 1).limit(1),
@@ -136,9 +148,7 @@
       <div><strong>Format</strong><br>${escapeHtml(row.format)} · ${row.rounds} rounds</div>
     `;
 
-    renderBoard("board", config, currentPicks, {
-      onRendered: ({ picksMade, totalPicks, onClock }) => updateStatus(picksMade, totalPicks, onClock, config.teams)
-    });
+    renderCurrentBoard();
 
     // A pick just landed — re-run the current query so the drafted player
     // drops out of the available list without the user retyping.
@@ -178,6 +188,13 @@
   const announcedOverall = new Set();
   let announceSeeded = false;
   let announcing = false;
+  // The team on the clock shouldn't be burning its two minutes while the pick
+  // before it is still being read out: the clock is held for the length of the
+  // announcement, and its deadline pushed back by the same amount so it starts
+  // from a full clock when the reading finishes.
+  let announceHoldingClock = false;
+  let announceClockDelayMs = 0;
+  let announceStartedMs = 0;
   let announceTimers = [];
   let mouthTimer = null;
   let typeTimer = null;
@@ -294,6 +311,13 @@
   function hideAnnouncement() {
     const overlay = document.getElementById("pick-announce");
     clearAnnounceTimers();
+    // Dismissed part-way through: the clock only earns back the time the
+    // announcement actually took, and starts running from here.
+    if (announceHoldingClock) {
+      announceClockDelayMs = Math.min(announceClockDelayMs, Date.now() - announceStartedMs);
+      announceHoldingClock = false;
+      renderCurrentBoard();
+    }
     overlay.classList.add("leaving");
     announceTimers.push(
       setTimeout(() => {
@@ -346,16 +370,26 @@
       clearInterval(typeTimer);
       clearInterval(mouthTimer);
       // Mouth shut, the sentence is delivered — this is the "stop" the whole
-      // animation is timed against.
+      // animation is timed against, and the moment the next team's clock starts.
       commish.src = ANNOUNCE_FRAMES[0];
       render(full, true);
+      announceHoldingClock = false;
+      renderCurrentBoard();
       announceTimers.push(setTimeout(hideAnnouncement, HOLD_MS));
     };
 
     if (reduceMotion) {
+      announceClockDelayMs = 0;
       finish();
       return;
     }
+
+    // How long the clock is about to be held for — the typing is the animation,
+    // so the delay is exactly the time it takes to type the sentence out.
+    announceClockDelayMs = full * TYPE_MS;
+    announceStartedMs = Date.now();
+    announceHoldingClock = true;
+    renderCurrentBoard();
 
     playChime();
     render(0, false);

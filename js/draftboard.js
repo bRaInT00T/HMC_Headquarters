@@ -57,17 +57,25 @@ function startPickClocks() {
 // Resolves the stored clock into something renderable. clockState is
 // draft_config.clock_state ({startedAt, pausedAt}); fallbackAnchorMs is the last
 // live pick's timestamp, used when no clock has ever been set so the board keeps
-// working on a project that hasn't run the clock_state migration.
-function resolvePickClock(clockState, fallbackAnchorMs) {
+// working on a project that hasn't run the clock_state migration. delayMs pushes
+// the deadline back by however long the pick took to announce, so the team on the
+// clock still gets its full two minutes once the commissioner is done reading.
+function resolvePickClock(clockState, fallbackAnchorMs, delayMs) {
   const state = clockState || {};
   const startedMs = state.startedAt ? new Date(state.startedAt).getTime() : fallbackAnchorMs;
   if (!startedMs) return null;
 
-  const deadline = startedMs + PICK_CLOCK_SECONDS * 1000;
+  const deadline = startedMs + (delayMs || 0) + PICK_CLOCK_SECONDS * 1000;
   if (state.pausedAt) {
-    return { paused: true, remainingMs: Math.max(0, deadline - new Date(state.pausedAt).getTime()) };
+    return { paused: true, remainingMs: clampRemaining(deadline - new Date(state.pausedAt).getTime()) };
   }
   return { paused: false, deadline };
+}
+
+// A delayed deadline can leave more than a full clock on the board; never show
+// more time than a team actually gets.
+function clampRemaining(ms) {
+  return Math.max(0, Math.min(PICK_CLOCK_SECONDS * 1000, ms));
 }
 
 // Who actually makes the pick sitting at (round, slot). Normally the slot's own
@@ -145,7 +153,17 @@ function renderBoard(containerId, config, picks, opts = {}) {
   const liveEntries = (picks || [])
     .filter((p) => p.source !== "keeper" && p.entered_at)
     .map((p) => new Date(p.entered_at).getTime());
-  const clock = resolvePickClock(config.clock_state, liveEntries.length ? Math.max(...liveEntries) : null);
+  let clock = resolvePickClock(
+    config.clock_state,
+    liveEntries.length ? Math.max(...liveEntries) : null,
+    opts.clockDelayMs
+  );
+  // opts.clockHeld: the public board sets this while the commissioner is reading
+  // the previous pick out. The clock sits at a full two minutes rather than
+  // ticking — it starts for real on the re-render that follows the announcement.
+  if (clock && !clock.paused && opts.clockHeld) {
+    clock = { paused: true, held: true, remainingMs: clampRemaining(clock.deadline - Date.now()) };
+  }
 
   let html = `<table class="board"><thead><tr><th>Rd</th>`;
   config.teams.forEach((t) => {
@@ -189,7 +207,7 @@ function renderBoard(containerId, config, picks, opts = {}) {
         if (isOnClock && clock) {
           clockHtml = clock.paused
             ? `<div class="pick-clock paused" data-frozen="${clock.remainingMs}">–:––</div>
-               <div class="clock-note">paused</div>`
+               <div class="clock-note">${clock.held ? "announcing" : "paused"}</div>`
             : `<div class="pick-clock" data-deadline="${clock.deadline}">–:––</div>`;
         }
         html += `<td class="pick-cell${isOnClock ? " on-clock" : ""}${pickingSlot !== s ? " traded" : ""}">
