@@ -221,7 +221,8 @@ function renderBoard(containerId, config, picks, opts = {}) {
         const editing = opts.editingOverall === overall ? " editing" : "";
         html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
           <div class="player">${escapeHtml(pick.player || "")}</div>
-          <div class="meta">${escapeHtml(pick.position || "")}${pick.nfl_team ? " - " + escapeHtml(nflTeamName(pick.nfl_team)) : ""}</div>
+          <div class="meta">${escapeHtml(pick.position || "")}</div>
+          ${pick.nfl_team ? `<div class="meta">${escapeHtml(nflTeamName(pick.nfl_team))}</div>` : ""}
           ${viaHtml}
           <div class="meta">${isKeeper ? '<span class="keeper-tag">Keeper</span> · ' : ""}Pick #${overall}${pick.source === "yahoo" ? " · synced" : ""}</div>
         </td>`;

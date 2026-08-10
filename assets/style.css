@@ -619,7 +619,13 @@ table.board td.pick-cell {
 }
 table.board td.pick-cell.filled { background: #1a1e1a; }
 table.board td.pick-cell .player { font-weight: 600; }
-table.board td.pick-cell .meta { color: var(--text-dim); font-size: 0.72rem; }
+/* Capped to the column's own min-width so a spelled-out NFL team wraps inside
+   the cell rather than pushing its column wider than the rest. */
+table.board td.pick-cell .meta {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  max-width: 130px;
+}
 table.board td.pick-cell.on-clock { outline: 2px solid var(--accent); }
 /* Admin only — recorded picks on the commissioner's preview board load back into
    the entry form when clicked. The public board never gets this class. */
