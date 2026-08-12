@@ -82,6 +82,11 @@
     <strong>Mock draft in progress</strong> — this is a rehearsal board. The real draft is untouched.
   </div>
 
+  <div class="board-toolbar">
+    <button type="button" class="btn secondary" id="board-fullscreen">⛶ Full screen</button>
+    <button type="button" class="btn secondary" id="board-popout">⧉ Pop out</button>
+  </div>
+
   <div class="board-wrap">
     <div id="board">Loading draft board…</div>
   </div>
@@ -871,7 +876,44 @@
     });
   }
 
+  function wireBoardControls() {
+    const boardWrap = document.querySelector(".board-wrap");
+    const fsBtn = document.getElementById("board-fullscreen");
+    const popoutBtn = document.getElementById("board-popout");
+
+    if (document.fullscreenEnabled === false) {
+      fsBtn.hidden = true;
+    } else {
+      fsBtn.addEventListener("click", () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          boardWrap.requestFullscreen().catch(() => {});
+        }
+      });
+      document.addEventListener("fullscreenchange", () => {
+        const active = document.fullscreenElement === boardWrap;
+        fsBtn.textContent = active ? "⛶ Exit full screen" : "⛶ Full screen";
+        boardWrap.classList.toggle("is-fullscreen", active);
+      });
+    }
+
+    popoutBtn.addEventListener("click", () => {
+      const url = new URL(location.href);
+      url.searchParams.set("popout", "1");
+      window.open(url.toString(), "hmc-draft-board", "width=1400,height=900,noopener");
+    });
+
+    // A popped-out window is just this page with the extra chrome hidden —
+    // it stays on the same live Realtime subscription, so no separate page
+    // to keep in sync.
+    if (new URLSearchParams(location.search).has("popout")) {
+      document.body.classList.add("popout-mode");
+    }
+  }
+
   async function init() {
+    wireBoardControls();
     sb = getSupabaseClient();
     if (!sb) {
       document.getElementById("board").innerHTML = `<p style="padding:16px;color:var(--text-dim);">

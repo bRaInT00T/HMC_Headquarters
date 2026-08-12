@@ -582,11 +582,38 @@ table.scoring-table th { color: var(--text-dim); font-weight: 600; }
   white-space: nowrap;
 }
 
+.board-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .board-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+
+.board-wrap:fullscreen {
+  overflow: auto;
+  background: var(--bg);
+  padding: 16px;
+  border: none;
+  border-radius: 0;
+}
+
+/* Popped-out window: same live page, just the surrounding chrome hidden so
+   the board is the whole thing. */
+body.popout-mode .site-header,
+body.popout-mode .draft-meta,
+body.popout-mode .mock-draft,
+body.popout-mode .available-players,
+body.popout-mode .note-box,
+body.popout-mode .site-footer {
+  display: none;
+}
+body.popout-mode .page-header { margin-bottom: 12px; }
 
 table.board {
   border-collapse: collapse;
