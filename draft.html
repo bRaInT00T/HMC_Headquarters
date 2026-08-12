@@ -82,13 +82,16 @@
     <strong>Mock draft in progress</strong> — this is a rehearsal board. The real draft is untouched.
   </div>
 
-  <div class="board-toolbar">
-    <button type="button" class="btn secondary" id="board-fullscreen">⛶ Full screen</button>
-    <button type="button" class="btn secondary" id="board-popout">⧉ Pop out</button>
-  </div>
-
-  <div class="board-wrap">
-    <div id="board">Loading draft board…</div>
+  <div class="board-container">
+    <div class="board-toolbar">
+      <button type="button" class="icon-btn" id="board-view-grid" aria-label="Grid view" title="Grid view">▦</button>
+      <button type="button" class="icon-btn" id="board-view-list" aria-label="List view" title="List view">☰</button>
+      <button type="button" class="icon-btn" id="board-fullscreen" aria-label="Full screen" title="Full screen">⛶</button>
+      <button type="button" class="icon-btn" id="board-popout" aria-label="Pop out" title="Pop out">⧉</button>
+    </div>
+    <div class="board-wrap">
+      <div id="board">Loading draft board…</div>
+    </div>
   </div>
 
   <div class="pick-announce" id="pick-announce" hidden>
@@ -125,6 +128,9 @@
 <script src="js/search.js"></script>
 <script>
   let sb = null;
+  // "grid" (one column per team) or "list" (chronological, one row per pick).
+  // Remembered per-browser so a viewer's choice sticks across visits.
+  let boardView = localStorage.getItem("hmc-board-view") === "list" ? "list" : "grid";
   // The league's own configuration — draft order, rounds, traded picks. Shared
   // by the real board and the mock, which only differ in their picks and clock.
   let config = null;
@@ -167,6 +173,7 @@
     // draft_config.clock_state is left alone while one is under way.
     const boardConfig = mockActive() ? { ...config, clock_state: mockState.clock_state || {} } : config;
     renderBoard("board", boardConfig, currentPicks, {
+      view: boardView,
       clockHeld: announceHoldingClock,
       clockDelayMs: announceClockDelayMs,
       onRendered: (info) => {
@@ -893,22 +900,42 @@
       });
       document.addEventListener("fullscreenchange", () => {
         const active = document.fullscreenElement === boardWrap;
-        fsBtn.textContent = active ? "⛶ Exit full screen" : "⛶ Full screen";
-        boardWrap.classList.toggle("is-fullscreen", active);
+        fsBtn.setAttribute("aria-label", active ? "Exit full screen" : "Full screen");
+        fsBtn.title = active ? "Exit full screen" : "Full screen";
       });
     }
 
-    popoutBtn.addEventListener("click", () => {
-      const url = new URL(location.href);
-      url.searchParams.set("popout", "1");
-      window.open(url.toString(), "hmc-draft-board", "width=1400,height=900,noopener");
-    });
+    // Grid (one column per team) vs. list (chronological, one row per pick).
+    const gridBtn = document.getElementById("board-view-grid");
+    const listBtn = document.getElementById("board-view-list");
+    function setBoardView(view) {
+      boardView = view;
+      localStorage.setItem("hmc-board-view", view);
+      gridBtn.classList.toggle("active", view === "grid");
+      listBtn.classList.toggle("active", view === "list");
+      renderCurrentBoard();
+    }
+    gridBtn.classList.toggle("active", boardView === "grid");
+    listBtn.classList.toggle("active", boardView === "list");
+    gridBtn.addEventListener("click", () => setBoardView("grid"));
+    listBtn.addEventListener("click", () => setBoardView("list"));
 
     // A popped-out window is just this page with the extra chrome hidden —
     // it stays on the same live Realtime subscription, so no separate page
     // to keep in sync.
-    if (new URLSearchParams(location.search).has("popout")) {
+    const isPopout = new URLSearchParams(location.search).has("popout");
+    if (isPopout) {
       document.body.classList.add("popout-mode");
+      popoutBtn.textContent = "✕";
+      popoutBtn.setAttribute("aria-label", "Close popout window");
+      popoutBtn.title = "Close window";
+      popoutBtn.addEventListener("click", () => window.close());
+    } else {
+      popoutBtn.addEventListener("click", () => {
+        const url = new URL(location.href);
+        url.searchParams.set("popout", "1");
+        window.open(url.toString(), "hmc-draft-board", "width=1400,height=900,noopener");
+      });
     }
   }
 

@@ -124,7 +124,7 @@ function wirePickCellClicks(container, onPickClick) {
   container.dataset.pickClicksWired = "1";
 
   const activate = (e) => {
-    const cell = e.target.closest("td.pick-cell.clickable");
+    const cell = e.target.closest(".pick-cell.clickable");
     if (!cell) return;
     e.preventDefault();
     container._onPickClick(Number(cell.dataset.overall));
@@ -133,6 +133,123 @@ function wirePickCellClicks(container, onPickClick) {
   container.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") activate(e);
   });
+}
+
+// Builds the clock markup for an empty, on-the-clock cell — identical in both
+// the grid and the list view.
+function pickClockHtml(clock) {
+  if (!clock) return "";
+  return clock.paused
+    ? `<div class="pick-clock paused" data-frozen="${clock.remainingMs}">–:––</div>
+       <div class="clock-note">${clock.held ? "announcing" : "paused"}</div>`
+    : `<div class="pick-clock" data-deadline="${clock.deadline}">–:––</div>`;
+}
+
+// One column per team, one row per round — a team's picks always line up in
+// the same column, and a traded pick stays in its original slot's column
+// with a "via" note rather than jumping to the acquiring team's column.
+function renderGridHtml({ config, numTeams, rounds, tradedPicks, ownerBySlot, pickByOverall, onClock, clock, opts }) {
+  let html = `<table class="board"><thead><tr><th>Rd</th>`;
+  config.teams.forEach((t) => {
+    html += `<th>${escapeHtml(t.owner)} <span style="color:var(--text-dim)">(${t.slot})</span></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  for (let r = 1; r <= rounds; r++) {
+    html += `<tr><td class="round-label">${r}</td>`;
+    for (let s = 1; s <= numTeams; s++) {
+      const overall = overallPickForRoundSlot(r, s, numTeams);
+      const pick = pickByOverall[overall];
+      const isOnClock = onClock && onClock.round === r && onClock.slot === s;
+
+      // A traded pick keeps its place in the snake order; only the team making
+      // it changes, so the cell stays put and picks up a "via" line.
+      const pickingSlot = pickingSlotFor(r, s, tradedPicks);
+      const viaHtml =
+        pickingSlot !== s
+          ? `<div class="meta via">via ${escapeHtml(ownerBySlot[pickingSlot] || `slot ${pickingSlot}`)}</div>`
+          : "";
+
+      if (pick) {
+        const isKeeper = pick.source === "keeper";
+        // Admin-only: passing onPickClick turns recorded picks into controls that
+        // load themselves back into the entry form. The public board passes no
+        // callback, so its cells stay inert markup.
+        const clickable = Boolean(opts.onPickClick);
+        const clickAttrs = clickable ? ` data-overall="${overall}" role="button" tabindex="0"` : "";
+        // Marks the cell the entry form is pointed at, so it's visible which pick
+        // a save would overwrite.
+        const editing = opts.editingOverall === overall ? " editing" : "";
+        html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
+          <div class="player">${escapeHtml(pick.player || "")}</div>
+          <div class="meta">${escapeHtml(pick.position || "")}</div>
+          ${pick.nfl_team ? `<div class="meta">${escapeHtml(nflTeamName(pick.nfl_team))}</div>` : ""}
+          ${viaHtml}
+          <div class="meta">${isKeeper ? '<span class="keeper-tag">Keeper</span> · ' : ""}Pick #${overall}${pick.source === "yahoo" ? " · synced" : ""}</div>
+        </td>`;
+      } else {
+        html += `<td class="pick-cell${isOnClock ? " on-clock" : ""}${pickingSlot !== s ? " traded" : ""}">
+          ${isOnClock ? `<span class="live-dot"></span>on the clock${pickClockHtml(clock)}` : `<span class="meta">#${overall}</span>`}
+          ${viaHtml}
+        </td>`;
+      }
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table>`;
+  return html;
+}
+
+// One row per pick, in the order picks actually happen (overall pick number)
+// rather than the grid's spatial team-column layout — easier to scan or
+// scroll through as a running history of the draft.
+function renderListHtml({ config, numTeams, rounds, tradedPicks, ownerBySlot, pickByOverall, onClock, clock, opts }) {
+  const totalPicks = numTeams * rounds;
+  let html = `<div class="board-list">`;
+
+  for (let overall = 1; overall <= totalPicks; overall++) {
+    const { round: r, slot: s } = slotForOverallPick(overall, numTeams);
+    const pick = pickByOverall[overall];
+    const isOnClock = onClock && onClock.round === r && onClock.slot === s;
+    const pickingSlot = pickingSlotFor(r, s, tradedPicks);
+    const viaHtml =
+      pickingSlot !== s
+        ? `<span class="meta via">via ${escapeHtml(ownerBySlot[pickingSlot] || `slot ${pickingSlot}`)}</span>`
+        : "";
+    const owner = ownerBySlot[s] || `Slot ${s}`;
+    const numHtml = `<div class="list-pick-num">#${overall}<span class="meta">Rd ${r}</span></div>`;
+    const teamHtml = `<div class="list-team">${escapeHtml(owner)}</div>`;
+
+    if (pick) {
+      const isKeeper = pick.source === "keeper";
+      const clickable = Boolean(opts.onPickClick);
+      const clickAttrs = clickable ? ` data-overall="${overall}" role="button" tabindex="0"` : "";
+      const editing = opts.editingOverall === overall ? " editing" : "";
+      html += `<div class="pick-cell list-row filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
+        ${numHtml}
+        ${teamHtml}
+        <div class="list-player">
+          <div class="player">${escapeHtml(pick.player || "")}</div>
+          <div class="meta">${escapeHtml(pick.position || "")}${pick.nfl_team ? " · " + escapeHtml(nflTeamName(pick.nfl_team)) : ""}</div>
+          ${viaHtml}
+        </div>
+        <div class="list-tag">${isKeeper ? '<span class="keeper-tag">Keeper</span>' : ""}${pick.source === "yahoo" ? '<span class="meta">synced</span>' : ""}</div>
+      </div>`;
+    } else {
+      html += `<div class="pick-cell list-row${isOnClock ? " on-clock" : ""}${pickingSlot !== s ? " traded" : ""}">
+        ${numHtml}
+        ${teamHtml}
+        <div class="list-player">
+          ${isOnClock ? `<span class="live-dot"></span>on the clock${pickClockHtml(clock)}` : `<span class="meta">upcoming</span>`}
+          ${viaHtml}
+        </div>
+        <div class="list-tag"></div>
+      </div>`;
+    }
+  }
+
+  html += `</div>`;
+  return html;
 }
 
 // config: { rounds, teams: [{slot, owner, manager}, ...], traded_picks: [...] }
@@ -188,61 +305,10 @@ function renderBoard(containerId, config, picks, opts = {}) {
     clock = { paused: true, held: true, remainingMs: clampRemaining(clock.deadline - Date.now()) };
   }
 
-  let html = `<table class="board"><thead><tr><th>Rd</th>`;
-  config.teams.forEach((t) => {
-    html += `<th>${escapeHtml(t.owner)} <span style="color:var(--text-dim)">(${t.slot})</span></th>`;
-  });
-  html += `</tr></thead><tbody>`;
-
-  for (let r = 1; r <= rounds; r++) {
-    html += `<tr><td class="round-label">${r}</td>`;
-    for (let s = 1; s <= numTeams; s++) {
-      const overall = overallPickForRoundSlot(r, s, numTeams);
-      const pick = pickByOverall[overall];
-      const isOnClock = onClock && onClock.round === r && onClock.slot === s;
-
-      // A traded pick keeps its place in the snake order; only the team making
-      // it changes, so the cell stays put and picks up a "via" line.
-      const pickingSlot = pickingSlotFor(r, s, tradedPicks);
-      const viaHtml =
-        pickingSlot !== s
-          ? `<div class="meta via">via ${escapeHtml(ownerBySlot[pickingSlot] || `slot ${pickingSlot}`)}</div>`
-          : "";
-
-      if (pick) {
-        const isKeeper = pick.source === "keeper";
-        // Admin-only: passing onPickClick turns recorded picks into controls that
-        // load themselves back into the entry form. The public board passes no
-        // callback, so its cells stay inert markup.
-        const clickable = Boolean(opts.onPickClick);
-        const clickAttrs = clickable ? ` data-overall="${overall}" role="button" tabindex="0"` : "";
-        // Marks the cell the entry form is pointed at, so it's visible which pick
-        // a save would overwrite.
-        const editing = opts.editingOverall === overall ? " editing" : "";
-        html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
-          <div class="player">${escapeHtml(pick.player || "")}</div>
-          <div class="meta">${escapeHtml(pick.position || "")}</div>
-          ${pick.nfl_team ? `<div class="meta">${escapeHtml(nflTeamName(pick.nfl_team))}</div>` : ""}
-          ${viaHtml}
-          <div class="meta">${isKeeper ? '<span class="keeper-tag">Keeper</span> · ' : ""}Pick #${overall}${pick.source === "yahoo" ? " · synced" : ""}</div>
-        </td>`;
-      } else {
-        let clockHtml = "";
-        if (isOnClock && clock) {
-          clockHtml = clock.paused
-            ? `<div class="pick-clock paused" data-frozen="${clock.remainingMs}">–:––</div>
-               <div class="clock-note">${clock.held ? "announcing" : "paused"}</div>`
-            : `<div class="pick-clock" data-deadline="${clock.deadline}">–:––</div>`;
-        }
-        html += `<td class="pick-cell${isOnClock ? " on-clock" : ""}${pickingSlot !== s ? " traded" : ""}">
-          ${isOnClock ? `<span class="live-dot"></span>on the clock${clockHtml}` : `<span class="meta">#${overall}</span>`}
-          ${viaHtml}
-        </td>`;
-      }
-    }
-    html += `</tr>`;
-  }
-  html += `</tbody></table>`;
+  const html =
+    opts.view === "list"
+      ? renderListHtml({ config, numTeams, rounds, tradedPicks, ownerBySlot, pickByOverall, onClock, clock, opts })
+      : renderGridHtml({ config, numTeams, rounds, tradedPicks, ownerBySlot, pickByOverall, onClock, clock, opts });
   el.innerHTML = html;
   if (opts.onPickClick) wirePickCellClicks(el, opts.onPickClick);
   startPickClocks();

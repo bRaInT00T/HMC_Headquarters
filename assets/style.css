@@ -582,12 +582,104 @@ table.scoring-table th { color: var(--text-dim); font-weight: 600; }
   white-space: nowrap;
 }
 
-.board-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 8px;
+.board-container {
+  position: relative;
 }
+
+.board-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 15;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.board-container:hover .board-toolbar,
+.board-container:focus-within .board-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--bg-panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--bg-panel-2); }
+.icon-btn.active {
+  background: var(--accent);
+  color: #1a1a1a;
+  border-color: var(--accent);
+}
+.icon-btn.active:hover { background: var(--accent); }
+.icon-btn.small { width: 24px; height: 24px; font-size: 0.8rem; border-radius: 6px; }
+
+/* Admin only: the pick editor that opens over a board cell. Fixed-positioned
+   and anchored in JS from the cell's own rect, so it tracks the cell through
+   the board's horizontal scrolling and through full board re-renders. */
+.inline-pick-editor {
+  position: fixed;
+  z-index: 80;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  background: var(--bg-panel-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inline-pick-editor[hidden] { display: none; }
+.inline-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+.inline-editor-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.inline-pick-editor input,
+.inline-pick-editor select {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-size: 0.82rem;
+}
+/* Shorter than the page-level autocompletes: this one opens wherever the cell
+   is, so a 360px list would routinely run off the bottom of the viewport. */
+.inline-pick-editor .search-results { max-height: 200px; }
+.inline-editor-actions { display: flex; gap: 8px; }
+.inline-editor-actions .btn { flex: 1; padding: 7px 10px; font-size: 0.82rem; }
+.inline-editor-note {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.inline-editor-note.err { color: var(--danger); }
+.inline-editor-note.ok { color: var(--accent-2); }
 
 .board-wrap {
   overflow-x: auto;
@@ -613,7 +705,36 @@ body.popout-mode .note-box,
 body.popout-mode .site-footer {
   display: none;
 }
-body.popout-mode .page-header { margin-bottom: 12px; }
+
+/* With the surrounding chrome gone, let the board itself claim the whole
+   window instead of sitting inside main's normal 980px reading column. */
+html:has(body.popout-mode),
+body.popout-mode {
+  height: 100%;
+}
+body.popout-mode main {
+  max-width: none;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+}
+body.popout-mode .page-header { margin-bottom: 12px; flex: 0 0 auto; }
+body.popout-mode .board-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.popout-mode .board-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+body.popout-mode table.board {
+  width: 100%;
+  height: 100%;
+}
+body.popout-mode .board-list { width: 100%; }
 
 table.board {
   border-collapse: collapse;
@@ -640,43 +761,45 @@ table.board td.round-label {
   text-align: center;
   width: 40px;
 }
-table.board td.pick-cell {
+/* Shared between the grid (table.board td.pick-cell) and the list view
+   (.board-list .pick-cell, plain divs) — a pick reads the same either way. */
+.pick-cell {
   background: var(--bg-panel);
-  min-width: 130px;
 }
-table.board td.pick-cell.filled { background: #1a1e1a; }
-table.board td.pick-cell .player { font-weight: 600; }
-/* Capped to the column's own min-width so a spelled-out NFL team wraps inside
-   the cell rather than pushing its column wider than the rest. */
-table.board td.pick-cell .meta {
+table.board td.pick-cell { min-width: 130px; }
+.pick-cell.filled { background: #1a1e1a; }
+.pick-cell .player { font-weight: 600; }
+/* Capped to the grid column's own min-width so a spelled-out NFL team wraps
+   inside the cell rather than pushing its column wider than the rest. */
+.pick-cell .meta {
   color: var(--text-dim);
   font-size: 0.72rem;
-  max-width: 130px;
 }
-table.board td.pick-cell.on-clock { outline: 2px solid var(--accent); }
+table.board td.pick-cell .meta { max-width: 130px; }
+.pick-cell.on-clock { outline: 2px solid var(--accent); }
 /* Admin only — recorded picks on the commissioner's preview board load back into
    the entry form when clicked. The public board never gets this class. */
-table.board td.pick-cell.clickable { cursor: pointer; }
-table.board td.pick-cell.clickable:hover { background: #232a23; }
-table.board td.pick-cell.clickable:focus-visible {
+.pick-cell.clickable { cursor: pointer; }
+.pick-cell.clickable:hover { background: #232a23; }
+.pick-cell.clickable:focus-visible {
   outline: 2px solid var(--accent-2);
   outline-offset: -2px;
 }
 
 /* The pick currently loaded in the entry form. Deliberately a different colour
    from .on-clock's outline — they're often two different cells. */
-table.board td.pick-cell.editing {
+.pick-cell.editing {
   outline: 2px dashed var(--accent-2);
   outline-offset: -2px;
 }
 
 /* Keepers are recorded before draft day, so they read as settled rather than
    as something that just happened live. */
-table.board td.pick-cell.filled.keeper { background: #1a1a22; }
+.pick-cell.filled.keeper { background: #1a1a22; }
 /* .clickable:hover and .filled.keeper are the same specificity (0,4,2) and
    .filled.keeper is declared later, so it would otherwise win the tie and
    keeper cells would never show hover feedback. */
-table.board td.pick-cell.clickable.keeper:hover { background: #26263a; }
+.pick-cell.clickable.keeper:hover { background: #26263a; }
 .keeper-tag {
   color: var(--accent-2);
   font-weight: 700;
@@ -684,17 +807,17 @@ table.board td.pick-cell.clickable.keeper:hover { background: #26263a; }
   letter-spacing: 0.04em;
 }
 
-/* A pick that changed hands — shown in the original team's column, since the
-   draft order position doesn't move, with the acquiring team called out. */
-table.board td.pick-cell .via {
+/* A pick that changed hands — shown in the original team's column/row, since
+   the draft order position doesn't move, with the acquiring team called out. */
+.pick-cell .via {
   color: var(--accent);
   font-style: italic;
 }
-table.board td.pick-cell.traded { background: #201c17; }
+.pick-cell.traded { background: #201c17; }
 
 /* Counts down from the moment the previous pick was recorded. Tabular figures
    keep it from jittering as the digits change each second. */
-table.board td.pick-cell .pick-clock {
+.pick-cell .pick-clock {
   margin-top: 4px;
   font-size: 0.95rem;
   font-weight: 700;
@@ -702,19 +825,58 @@ table.board td.pick-cell .pick-clock {
   color: var(--accent);
 }
 /* Paused reads as held, not running — no pulse, muted colour. */
-table.board td.pick-cell .pick-clock.paused { color: var(--text-dim); }
-table.board td.pick-cell .clock-note {
+.pick-cell .pick-clock.paused { color: var(--text-dim); }
+.pick-cell .clock-note {
   color: var(--text-dim);
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-table.board td.pick-cell .pick-clock.expired {
+.pick-cell .pick-clock.expired {
   color: var(--danger);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   animation: pulse 1.6s infinite;
+}
+
+/* List view: one row per pick in chronological (overall pick) order, instead
+   of the grid's one-column-per-team layout. */
+.board-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.board-list .pick-cell.list-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 2fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.board-list .pick-cell.list-row:last-child { border-bottom: none; }
+.list-pick-num {
+  font-weight: 700;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+.list-pick-num .meta { display: block; font-weight: 400; }
+.list-team {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+.list-player .player { font-size: 0.92rem; }
+.list-tag { text-align: right; font-size: 0.72rem; white-space: nowrap; }
+@media (max-width: 640px) {
+  .board-list .pick-cell.list-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .list-tag { text-align: left; }
 }
 
 .live-dot {
@@ -768,7 +930,35 @@ form.pick-form .full-row { grid-column: 1 / -1; display: flex; gap: 10px; align-
   margin-bottom: 10px;
 }
 .preview-head h2 { margin-bottom: 0; }
-.preview-head .clock-controls { display: flex; gap: 10px; }
+.preview-head .clock-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* Inline checkbox + label pairs sitting alongside buttons (pause-after-reset,
+   clear-keepers). Sized to read as a control, not as body copy. */
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.checkbox-label input { cursor: pointer; }
+
+/* Destructive controls, fenced off from the settings above them. */
+.danger-zone {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: rgba(209, 96, 96, 0.06);
+}
+.danger-zone .field-row { align-items: center; }
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn:disabled:hover { opacity: 0.45; }
 
 /* A break in the auto-flow: takes the full width and lays its own fields out on
    the same column rhythm, so the group always starts on a fresh line. */

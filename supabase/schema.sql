@@ -22,13 +22,32 @@ create table if not exists draft_config (
   -- countdown at whatever was left. Empty {} means "derive it from the last
   -- pick's entered_at", which is how it behaved before pause/reset existed.
   clock_state jsonb not null default '{}'::jsonb,
+  -- 'live' | 'mock' | 'testing'. Gates the destructive "reset draft board"
+  -- admin action: in 'live' mode, once draft_date is in the past the board can
+  -- no longer be wiped. 'mock' and 'testing' stay resettable at any time, so a
+  -- rehearsal can be cleared and re-run. Enforced server-side in
+  -- api/picks/[action].js, not just in the admin UI.
+  draft_mode text not null default 'live',
   updated_at timestamptz not null default now(),
-  constraint draft_config_singleton check (id = 1)
+  constraint draft_config_singleton check (id = 1),
+  constraint draft_config_mode check (draft_mode in ('live', 'mock', 'testing'))
 );
 
 -- Existing projects: add new columns without touching the row's other values.
 alter table draft_config add column if not exists traded_picks jsonb not null default '[]'::jsonb;
 alter table draft_config add column if not exists clock_state jsonb not null default '{}'::jsonb;
+alter table draft_config add column if not exists draft_mode text not null default 'live';
+-- add column if not exists can't carry a constraint, and the one in the create
+-- table above never runs on a table that already exists — so an existing project
+-- would get the column with no validation behind it. Dropping first keeps this
+-- re-runnable.
+alter table draft_config drop constraint if exists draft_config_mode;
+alter table draft_config add constraint draft_config_mode check (draft_mode in ('live', 'mock', 'testing'));
+
+-- PostgREST serves from a cached schema and will keep 404-ing a brand-new column
+-- until it reloads. Supabase usually does this on its own within a few seconds;
+-- this makes it immediate.
+notify pgrst, 'reload schema';
 
 insert into draft_config (id, teams)
 values (1, '[

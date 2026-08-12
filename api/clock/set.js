@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
   if (!requireAdmin(req, res)) return;
 
   try {
-    const action = (req.body || {}).action;
+    const { action, pauseAfter } = req.body || {};
     if (!["pause", "resume", "reset"].includes(action)) {
       res.status(400).json({ error: 'action must be "pause", "resume", or "reset".' });
       return;
@@ -29,7 +29,13 @@ module.exports = async (req, res) => {
     let clockState;
 
     if (action === "reset") {
-      clockState = { startedAt: now.toISOString(), pausedAt: null };
+      // pauseAfter parks a full clock rather than starting one: startedAt and
+      // pausedAt at the same instant means resolvePickClock() freezes it at the
+      // whole PICK_CLOCK_SECONDS. Useful for setting the board up before a pick
+      // is actually due to start counting down.
+      clockState = pauseAfter
+        ? { startedAt: now.toISOString(), pausedAt: now.toISOString() }
+        : { startedAt: now.toISOString(), pausedAt: null };
     } else {
       const rows = await supabaseRequest("draft_config?select=clock_state&id=eq.1");
       const current = (rows && rows[0] && rows[0].clock_state) || {};

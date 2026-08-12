@@ -125,3 +125,12 @@ function startDraftCountdown(el, draftDateText) {
   if (!el.hidden) timer = setInterval(tick, 1000);
   return () => clearInterval(timer);
 }
+
+// Browser pages load this with a <script> tag and use the globals above. The
+// serverless side needs parseDraftDate() too — the "has the draft already
+// started?" guard on resetting the board has to hold on the server, not just in
+// the admin UI — so export it when there's a module system to export into.
+// `module` is undefined in the browser, which skips this entirely.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { parseDraftDate, formatDraftDateForStorage, draftDateToPickerValues };
+}

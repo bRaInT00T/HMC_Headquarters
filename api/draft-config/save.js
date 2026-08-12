@@ -4,6 +4,8 @@
 const { supabaseRequest } = require("../../lib/supabase");
 const { requireAdmin } = require("../../lib/auth");
 
+const DRAFT_MODES = ["live", "mock", "testing"];
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Use POST." });
@@ -12,8 +14,17 @@ module.exports = async (req, res) => {
   if (!requireAdmin(req, res)) return;
 
   try {
-    const { teams, rounds, season, draftDate, format, tradedPicks } = req.body || {};
+    const { teams, rounds, season, draftDate, format, tradedPicks, draftMode } = req.body || {};
     const patch = {};
+    if (draftMode !== undefined) {
+      // Matches the draft_config_mode check constraint — rejected here with a
+      // readable message rather than as a raw Postgres constraint violation.
+      if (!DRAFT_MODES.includes(draftMode)) {
+        res.status(400).json({ error: `draftMode must be one of: ${DRAFT_MODES.join(", ")}.` });
+        return;
+      }
+      patch.draft_mode = draftMode;
+    }
     if (teams) patch.teams = teams;
     // Sent as a whole array (the admin UI edits the full list), so an empty
     // array has to be accepted — it means "no trades", not "nothing to update".
