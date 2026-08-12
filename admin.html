@@ -222,9 +222,11 @@
     <section class="rules-section">
       <h2>7. Record a Pick Manually</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.
-        Position and NFL Team narrow the player-name autocomplete, and fill in on their own once you pick a player from the
-        list. Position lists our roster slots, not raw NFL positions — W/R/T spans WR, RB and TE, and DEF offers the 32 team
-        defenses by name (individual defenders aren't draftable). The form opens on whichever pick is on the clock and
+        Player Name matches loosely — typos, apostrophes and initials are all forgiven, and last name first is fine
+        ("jamar chase", "ajbrown" and "chase jamarr" all land on Ja'Marr Chase). Position and NFL Team narrow that
+        list, and fill in on their own once you pick a player from it. Position lists our roster slots, not raw NFL
+        positions — W/R/T spans WR, RB and TE, and DEF offers the 32 team defenses by name (individual defenders
+        aren't draftable). The form opens on whichever pick is on the clock and
         advances in snake order after each save (stepping back on Undo). To correct an earlier pick, set Pick # to it —
         Round, Team and the recorded player load in, and saving overwrites that pick rather than appending a new one.</p>
       <form class="pick-form" onsubmit="return false;">
@@ -338,6 +340,7 @@
 <script src="js/config.js"></script>
 <script src="js/history.js"></script>
 <script src="js/draftboard.js"></script>
+<script src="js/player-search.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/countdown.js"></script>
 <script src="js/search.js"></script>
@@ -409,6 +412,11 @@
         Not connected to Supabase yet — set SUPABASE_URL / SUPABASE_ANON_KEY in js/config.js.</p>`;
       return;
     }
+    // Warm the autocomplete's player list now rather than on the first
+    // keystroke, so typing a name never waits on a fetch. Failing here is
+    // survivable: loadPlayerIndex() doesn't cache the failure, so the first
+    // search tries again.
+    loadPlayerIndex().catch((e) => console.warn("Player list preload failed:", e.message));
     await loadAll();
     // The reset lock turns on with the passage of time, not with a database
     // change, so nothing would re-evaluate it on a tab sitting open across the
@@ -765,6 +773,11 @@
         done = !cursor;
         if (!done) await new Promise((r) => setTimeout(r, PLAYER_SYNC_PAGE_DELAY_MS));
       }
+      // The autocompletes are searching a copy of the list taken at page load —
+      // drop it so the players just synced are findable without a reload.
+      playerIndex = null;
+      playerIndexPromise = null;
+      loadPlayerIndex().catch(() => {}); // refill in the background; a keystroke retries on failure
       status.textContent = `Done — synced ${total} players.`;
       status.className = "status-msg ok";
     } catch (e) {
@@ -1618,9 +1631,63 @@
   // NFL_TEAM_NAMES comes from js/draftboard.js, loaded above — shared with
   // draft.html so both pages spell out team names the same way.
 
-  // Two of these exist: one for the pick form, one for keeper entry. Each owns
-  // its own suggestion list, debounce timer and in-flight sequence number, so
-  // typing in one can never clobber the other's dropdown.
+  // The draftable half of nfl_players — ~2,000 rows — pulled once and held in
+  // memory, indexed for js/player-search.js. Fuzzy matching can't be pushed
+  // into the database (`ilike '%q%'` is exact-substring only, and Postgres
+  // trigram search would mean a migration and an RPC), so the list comes to the
+  // matcher instead. At roughly 60KB a page it's a cheap trade, and it makes
+  // every keystroke after the first search local and instant.
+  let playerIndex = null;
+  let playerIndexPromise = null;
+
+  // PostgREST caps a response at 1,000 rows, so this pages. full_name isn't
+  // unique (two Chris Johnsons, say), so id breaks ties — without a total
+  // order, rows can shift between pages and get fetched twice or never.
+  async function fetchPlayerIndex() {
+    const PAGE_SIZE = 1000;
+    const MAX_PAGES = 25; // a stop on the loop; the real list is ~2 pages
+    const rows = [];
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const from = page * PAGE_SIZE;
+      const { data, error } = await sb
+        .from("nfl_players")
+        .select("full_name, position, team")
+        .in("position", DRAFTABLE_POSITIONS)
+        .order("full_name")
+        .order("id")
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+    return rows.map((p) =>
+      PlayerSearch.indexEntry({ name: p.full_name, position: p.position, nflTeam: p.team })
+    );
+  }
+
+  // Shared by all three autocompletes, and kicked off in initAdmin() so the
+  // list is usually already there by the time anyone types. A failed load isn't
+  // cached — the next keystroke retries it.
+  function loadPlayerIndex() {
+    if (playerIndex) return Promise.resolve(playerIndex);
+    if (!playerIndexPromise) {
+      playerIndexPromise = fetchPlayerIndex()
+        .then((entries) => {
+          playerIndex = entries;
+          return entries;
+        })
+        .catch((e) => {
+          playerIndexPromise = null;
+          throw e;
+        });
+    }
+    return playerIndexPromise;
+  }
+
+  // Three of these exist: one for the pick form, one for keeper entry, one for
+  // the board's inline editor. Each owns its own suggestion list, debounce
+  // timer and in-flight sequence number, so typing in one can never clobber
+  // another's dropdown.
   function createPlayerAutocomplete({ inputId, dropdownId, positionId, teamId }) {
     let suggestions = [];
     let activeIndex = -1;
@@ -1659,16 +1726,19 @@
         if (position === "DEF") {
           results = teamDefenseSuggestions(q, nflTeam);
         } else {
+          const entries = await loadPlayerIndex();
+          if (seq !== searchSeq) return; // a newer search superseded this one; discard the stale load
+
           // Always constrain to draftable positions, even on "All skill
-          // positions" — individual defenders are never a valid pick.
-          const positions = ROSTER_SLOT_POSITIONS[position] || DRAFTABLE_POSITIONS;
-          let query = sb.from("nfl_players").select("full_name, position, team").in("position", positions);
-          if (q) query = query.ilike("full_name", `%${q}%`);
-          if (nflTeam) query = query.eq("team", nflTeam);
-          const { data, error } = await query.order("full_name").limit(25);
-          if (error) throw error;
-          if (seq !== searchSeq) return; // a newer search superseded this one; discard stale response
-          results = (data || []).map((p) => ({ name: p.full_name, position: p.position, nflTeam: p.team }));
+          // positions" — individual defenders are never a valid pick. The
+          // index only holds draftable players, so "All" needs no filter.
+          const positions = ROSTER_SLOT_POSITIONS[position];
+          const pool = entries.filter(
+            (p) =>
+              (!positions || positions.includes(p.position)) &&
+              (!nflTeam || p.nflTeam === nflTeam)
+          );
+          results = PlayerSearch.rank(q, pool, 25);
         }
 
         if (seq !== searchSeq) return;
@@ -1738,9 +1808,12 @@
       el.innerHTML = "";
     }
 
+    // Matching is local once the player list is in memory, so there's no
+    // network call to debounce — the delay is only there to keep a fast typist
+    // from re-ranking the list on every keystroke.
     input().addEventListener("input", () => {
       selected = null;
-      queueSearch(300);
+      queueSearch(60);
     });
 
     // Changing a filter re-runs the current search so the list narrows in place.
@@ -1829,13 +1902,19 @@
   }
 
   // The 32 team defenses, drafted by full team name rather than as individual
-  // defenders. Not backed by nfl_players, so this is matched in memory.
+  // defenders. Not backed by nfl_players, so this is matched in memory — by the
+  // same fuzzy rules as players, plus each team's abbreviation as an alias, so
+  // "sf" finds the 49ers.
+  let defenseIndex = null;
+
   function teamDefenseSuggestions(q, nflTeam) {
-    const needle = q.toLowerCase();
-    return Object.entries(NFL_TEAM_NAMES)
-      .filter(([abbr, name]) => (!nflTeam || abbr === nflTeam) && (!needle || name.toLowerCase().includes(needle)))
-      .map(([abbr, name]) => ({ name, position: "DEF", nflTeam: abbr }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!defenseIndex) {
+      defenseIndex = Object.entries(NFL_TEAM_NAMES).map(([abbr, name]) =>
+        PlayerSearch.indexEntry({ name, position: "DEF", nflTeam: abbr }, abbr)
+      );
+    }
+    const pool = nflTeam ? defenseIndex.filter((d) => d.nflTeam === nflTeam) : defenseIndex;
+    return PlayerSearch.rank(q, pool, 25);
   }
 
   // Stay logged in across reloads: if a password is already cached from a
