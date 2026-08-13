@@ -6,5 +6,9 @@
   "engines": {
     "node": ">=18"
   },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=lib/**/*.js --test-coverage-include=api/**/*.js --test-coverage-include=js/countdown.js --test-coverage-include=js/draftboard.js --test-coverage-include=js/player-search.js --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \"test/**/*.test.js\""
+  },
   "dependencies": {}
 }

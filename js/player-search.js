@@ -53,8 +53,10 @@
     if (Math.abs(a.length - b.length) > max) return max + 1;
     const n = a.length;
     const m = b.length;
-    if (!n) return m > max ? max + 1 : m;
-    if (!m) return n > max ? max + 1 : n;
+    // The length check above already rejected anything further apart than the
+    // budget, so an empty side is within it by construction.
+    if (!n) return m;
+    if (!m) return n;
 
     let twoBack = null;
     let oneBack = Array.from({ length: m + 1 }, (_, j) => j);
@@ -179,5 +181,15 @@
     return scored.slice(0, limit).map((s) => s.entry);
   }
 
-  window.PlayerSearch = { normalize, indexEntry, rank };
+  const api = { normalize, indexEntry, rank };
+
+  // Browser pages load this with a <script> tag and reach it as
+  // window.PlayerSearch. Node (the test suite) has no window, so export into a
+  // module system when there is one — same guard js/countdown.js uses. The
+  // scoring internals ride along on that side only, so they can be exercised
+  // directly without widening the browser API.
+  if (typeof window !== "undefined") window.PlayerSearch = api;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = Object.assign({}, api, { maxEdits, boundedDistance, wordScore, scoreEntry });
+  }
 })();

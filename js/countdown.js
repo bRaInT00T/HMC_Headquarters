@@ -132,5 +132,11 @@ function startDraftCountdown(el, draftDateText) {
 // the admin UI — so export it when there's a module system to export into.
 // `module` is undefined in the browser, which skips this entirely.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { parseDraftDate, formatDraftDateForStorage, draftDateToPickerValues };
+  module.exports = {
+    parseDraftDate,
+    formatDraftDateForStorage,
+    draftDateToPickerValues,
+    formatDraftDate,
+    startDraftCountdown
+  };
 }

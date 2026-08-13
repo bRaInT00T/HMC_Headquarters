@@ -435,3 +435,35 @@ function renderBoard(containerId, config, picks, opts = {}) {
 
   if (opts.onRendered) opts.onRendered({ nextOverall, onClock, totalPicks, picksMade });
 }
+
+// Browser pages load this with a <script> tag and use the globals above.
+// `module` is undefined there, which skips this entirely; in Node (the test
+// suite) it's the way in. Same guard as js/countdown.js.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    NFL_TEAM_NAMES,
+    POSITION_GROUPS,
+    POSITION_GROUP_IDS,
+    PICK_CLOCK_SECONDS,
+    nflTeamName,
+    positionGroup,
+    positionTagHtml,
+    isValidPositionColor,
+    defaultPositionColors,
+    resolvePositionColors,
+    applyPositionColors,
+    renderPositionLegend,
+    slotForOverallPick,
+    overallPickForRoundSlot,
+    formatPickClock,
+    startPickClocks,
+    resolvePickClock,
+    clampRemaining,
+    pickingSlotFor,
+    wirePickCellClicks,
+    pickClockHtml,
+    renderGridHtml,
+    renderListHtml,
+    renderBoard
+  };
+}

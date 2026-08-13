@@ -111,6 +111,27 @@ Yahoo's consent screen — you'll land back on admin.html with tokens saved in S
 - **Manual entry** (section 2 on `draft-entry.html`) is there as a fallback if Yahoo sync is down or
   you're not drafting inside Yahoo that year.
 
+## Tests
+
+```bash
+npm test
+```
+
+No test framework and no devDependencies — the suite runs on Node's built-in `node --test` (Node 22 or
+newer), keeping the repo's zero-dependency rule. Every server-side call goes out through `fetch`, so the
+tests swap that one global and assert the real Supabase/Yahoo URLs and bodies; the two browser modules
+with actual logic in them (`js/draftboard.js`, `js/countdown.js`) run against a small hand-rolled DOM
+stand-in instead of jsdom.
+
+```bash
+npm run test:coverage
+```
+
+Same suite with V8 coverage, and it **fails below 100%** on lines, branches and functions across
+`lib/`, `api/`, `js/countdown.js`, `js/player-search.js` and `js/draftboard.js`. The remaining `js/*`
+files are page wiring (DOM event handlers, fetch-and-render) rather than logic and are outside that
+target — check those in a browser.
+
 ## Things worth knowing
 
 - **Yahoo's JSON shape is unusual** — collections come back as `{"0": {...}, "1": {...}, "count": N}`
