@@ -483,14 +483,17 @@ function loadPlayerFilterOptions() {
 // "sf" finds the 49ers.
 let defenseIndex = null;
 
-function teamDefenseSuggestions(q, nflTeam) {
+function teamDefenseIndex(nflTeam) {
   if (!defenseIndex) {
     defenseIndex = Object.entries(NFL_TEAM_NAMES).map(([abbr, name]) =>
       PlayerSearch.indexEntry({ name, position: "DEF", nflTeam: abbr }, abbr)
     );
   }
-  const pool = nflTeam ? defenseIndex.filter((d) => d.nflTeam === nflTeam) : defenseIndex;
-  return PlayerSearch.rank(q, pool, 25);
+  return nflTeam ? defenseIndex.filter((d) => d.nflTeam === nflTeam) : defenseIndex;
+}
+
+function teamDefenseSuggestions(q, nflTeam) {
+  return PlayerSearch.rank(q, teamDefenseIndex(nflTeam), 25);
 }
 
 // Stay logged in across reloads: if a password is already cached from a

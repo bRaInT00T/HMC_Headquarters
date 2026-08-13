@@ -12,9 +12,12 @@ picks synced automatically from Yahoo Fantasy Sports during the live draft.
   the GitHub API. Still just: edit the JSON, commit with a clear message, done.
 - **Draft Board** (`draft.html`) — public, read-only, subscribed to Supabase Realtime. Updates the instant
   a row changes in the `draft_picks` table — no polling.
-- **Admin** (`admin.html`) — password-gated (checked **server-side** now, via `ADMIN_PASSWORD`). Lets you:
-  connect a Yahoo account, trigger a sync (or toggle a 20-second auto-sync loop for draft day), set the
-  draft order, and manually add/undo picks as a fallback.
+- **Commissioner Settings** (`admin.html`) — password-gated (checked **server-side**, via
+  `ADMIN_PASSWORD`). Everything set up before draft day: connect a Yahoo account, draft date, draft mode
+  and board reset, draft order, the player database sync, keepers and traded picks, board colors.
+- **Draft Day Entry** (`draft-entry.html`) — the same gate, the draft-day half: run the Yahoo sync (or
+  toggle the 20-second auto-sync loop), enter and correct picks, and run the pick clock beside a live
+  board. Shared plumbing for both pages lives in `js/admin-core.js`.
 - **Yahoo sync** (`/api/yahoo/*`) — three-legged OAuth against Yahoo's Fantasy Sports API. Tokens are
   stored in Supabase (`yahoo_tokens`, server-only). `/api/yahoo/sync` pulls `draftresults`, resolves team
   and player names, and upserts rows into `draft_picks` — which is what fans out to everyone watching
@@ -100,13 +103,13 @@ Yahoo's consent screen — you'll land back on admin.html with tokens saved in S
 
 ## During the draft
 
-- Click **Sync Now** on `admin.html` whenever you want the latest Yahoo picks pulled in, or check
+- Click **Sync Now** on `draft-entry.html` whenever you want the latest Yahoo picks pulled in, or check
   **Live sync every 20s** and leave that tab open — it polls `/api/yahoo/sync` on an interval from the
   browser (Vercel's free Hobby plan only allows cron jobs once a day, so this client-side loop is the
   practical way to get near-live syncing without a paid plan).
 - `draft.html` needs zero interaction from anyone watching — Supabase Realtime pushes every change.
-- **Manual entry** (section 3 on admin.html) is there as a fallback if Yahoo sync is down or you're not
-  drafting inside Yahoo that year.
+- **Manual entry** (section 2 on `draft-entry.html`) is there as a fallback if Yahoo sync is down or
+  you're not drafting inside Yahoo that year.
 
 ## Things worth knowing
 

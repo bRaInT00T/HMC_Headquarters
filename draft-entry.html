@@ -125,7 +125,9 @@
       <p id="pick-status" class="status-msg"></p>
     </section>
 
-    <section class="rules-section" id="board">
+    <!-- id is "live-board", not "board": #board is the div renderBoard() writes
+         into, and a duplicate id would hand it this whole section to overwrite. -->
+    <section class="rules-section" id="live-board">
       <!-- The clock controls live with the board they act on, not with the pick form. -->
       <div class="preview-head">
         <h2>3. Live Board</h2>
