@@ -90,6 +90,8 @@
       <button type="button" class="icon-btn" id="board-popout" aria-label="Pop out" title="Pop out">⧉</button>
     </div>
     <div class="board-wrap">
+      <!-- Inside the wrap, not above it: the wrap is what goes full screen. -->
+      <div class="pos-legend" id="pos-legend" aria-label="Position colour key"></div>
       <div id="board">Loading draft board…</div>
     </div>
   </div>
@@ -194,6 +196,10 @@
 
     const row = cfgRows[0];
     config = toBoardConfig(row);
+    // Ahead of the render, so cells are never painted in the default palette and
+    // then repainted. Absent until schema.sql is re-run, which resolves to the
+    // stylesheet's own colours.
+    applyPositionColors(row.position_colors);
     // With a mock running, the mock's picks are the board — for everyone, so
     // the whole league watches the same rehearsal.
     currentPicks = (mock.active ? mock.picks : picks) || [];
@@ -941,6 +947,9 @@
 
   async function init() {
     wireBoardControls();
+    // Static markup, and it explains the colours whether or not the board
+    // itself ever loads — so it's rendered before the database is consulted.
+    renderPositionLegend("pos-legend");
     sb = getSupabaseClient();
     if (!sb) {
       document.getElementById("board").innerHTML = `<p style="padding:16px;color:var(--text-dim);">

@@ -15,6 +15,8 @@ create table if not exists draft_config (
   -- The pick keeps its position in the snake order — only who makes it changes
   -- (league rule: "you will not have that pick… the team you traded with will
   -- receive an additional pick in that round").
+  -- An optional "override":true marks a trade the commissioner recorded against
+  -- the league's own trade rules; it's a label for the admin list, not board math.
   traded_picks jsonb not null default '[]'::jsonb,
   -- The pick clock, so every viewer agrees and a reload doesn't restart it:
   --   {"startedAt":"…","pausedAt":null}
@@ -28,6 +30,13 @@ create table if not exists draft_config (
   -- rehearsal can be cleared and re-run. Enforced server-side in
   -- api/picks/[action].js, not just in the admin UI.
   draft_mode text not null default 'live',
+  -- Per-position board colours, overriding the palette in assets/style.css:
+  --   {"qb":"#e08b3a","rb":"#55a86a",…}
+  -- Keys are the six group ids from js/draftboard.js:POSITION_GROUPS; values are
+  -- six-digit hex. Empty {} means "use the stylesheet's defaults", and only the
+  -- groups actually changed need to be present. Validated in
+  -- api/draft-config/save.js before it ever reaches this column.
+  position_colors jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   constraint draft_config_singleton check (id = 1),
   constraint draft_config_mode check (draft_mode in ('live', 'mock', 'testing'))
@@ -37,6 +46,7 @@ create table if not exists draft_config (
 alter table draft_config add column if not exists traded_picks jsonb not null default '[]'::jsonb;
 alter table draft_config add column if not exists clock_state jsonb not null default '{}'::jsonb;
 alter table draft_config add column if not exists draft_mode text not null default 'live';
+alter table draft_config add column if not exists position_colors jsonb not null default '{}'::jsonb;
 -- add column if not exists can't carry a constraint, and the one in the create
 -- table above never runs on a table that already exists — so an existing project
 -- would get the column with no validation behind it. Dropping first keeps this

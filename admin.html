@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Commissioner Admin — HMC Fantasy Football</title>
+<title>Commissioner Settings — HMC Fantasy Football</title>
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="assets/logo.png" />
 <link rel="stylesheet" href="assets/style.css" />
@@ -12,10 +12,12 @@
 <header class="site-header">
   <div class="brand">
     <a href="index.html" class="brand-home" aria-label="HMC Fantasy Football home"><img src="assets/logo.png" alt="The Handsome Men's Club" class="logo" /></a>
-    <span class="sub">Commissioner Admin</span>
+    <span class="sub">Commissioner Settings</span>
   </div>
   <nav class="site-nav">
     <a href="index.html">Home</a>
+    <a href="admin.html" class="active">Settings</a>
+    <a href="draft-entry.html">Draft Day</a>
     <a href="draft.html">Public Draft Board</a>
   </nav>
   <div class="site-search">
@@ -24,7 +26,7 @@
   </div>
 </header>
 
-<main>
+<main class="with-toc">
   <div id="gate" class="gate">
     <h2>Commissioner Login</h2>
     <p style="color:var(--text-dim);font-size:0.85rem;">
@@ -41,30 +43,31 @@
   <div id="admin-content" style="display:none;">
     <div class="page-header">
       <div>
-        <h1>Commissioner Admin</h1>
-        <p>Connect Yahoo (optional but recommended), set the draft order, and manage picks.</p>
+        <h1>Commissioner Settings</h1>
+        <p>Everything set up <em>before</em> draft day: Yahoo, the date, the draft order, keepers and trades,
+          board colors. Entering picks while the draft runs happens on
+          <a href="draft-entry.html">Draft Day</a>.</p>
       </div>
+      <a class="btn" href="draft-entry.html">Go to Draft Day →</a>
     </div>
 
-    <section class="rules-section">
-      <h2>1. Yahoo Sync</h2>
+    <section class="rules-section" id="yahoo">
+      <h2>1. Yahoo Connection</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">
         If your league drafts inside Yahoo, connect it once and picks sync automatically — no manual
         transcription, no typos. Requires <code>YAHOO_CLIENT_ID</code>, <code>YAHOO_CLIENT_SECRET</code>,
         <code>YAHOO_REDIRECT_URI</code>, and <code>YAHOO_LEAGUE_KEY</code> set in Vercel (see README.md).
+        Draft-day syncing — including the every-20-seconds live sync — lives on the
+        <a href="draft-entry.html">Draft Day</a> page, with the board it fills.
       </p>
       <div class="full-row">
         <a class="btn secondary" href="/api/yahoo/login">Connect Yahoo Account</a>
-        <button class="btn" onclick="syncNow()">Sync Now</button>
-        <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-dim);">
-          <input type="checkbox" id="live-sync-toggle" onchange="toggleLiveSync()" />
-          Live sync every 20s (leave this tab open on draft day)
-        </label>
+        <button class="btn secondary" onclick="syncNow()">Test Sync Now</button>
       </div>
       <p id="yahoo-status" class="status-msg"></p>
     </section>
 
-    <section class="rules-section">
+    <section class="rules-section" id="draft-date">
       <h2>2. Draft Date</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Shown on the public draft board, and counted
         down to on the homepage. Time is optional — leave it blank if you've only locked in the day.</p>
@@ -82,7 +85,7 @@
       <p id="draft-date-status" class="status-msg"></p>
     </section>
 
-    <section class="rules-section">
+    <section class="rules-section" id="draft-mode">
       <h2>3. Draft Mode</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Mock and Testing exist so the board can be wiped
         and re-run while you rehearse. Live is the real draft: once the draft date above is in the past,
@@ -112,7 +115,7 @@
       </div>
     </section>
 
-    <section class="rules-section">
+    <section class="rules-section" id="draft-order">
       <h2>4. Draft Order Setup</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Draft order is drawn from a hat each year. Yahoo sync backfills this automatically from round 1 — or set it by hand below before the draft starts. Drag a row by its handle to reorder.</p>
       <button class="btn secondary" style="margin-bottom:10px;" onclick="loadYahooTeams()">Load Teams from Yahoo</button>
@@ -121,12 +124,12 @@
       <p id="order-status" class="status-msg"></p>
     </section>
 
-    <section class="rules-section">
+    <section class="rules-section" id="player-database">
       <h2>5. Player Database</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">
-        Powers the autocomplete in "Record a Pick Manually" below. Pulls the NFL player list from
-        balldontlie's API into Supabase — run it once before draft day, and again if rosters change
-        (trades, waivers). Takes a few minutes since the free API tier is rate-limited.
+        Powers the player autocompletes — the keeper form below, and pick entry on Draft Day. Pulls the NFL
+        player list from balldontlie's API into Supabase — run it once before draft day, and again if rosters
+        change (trades, waivers). Takes a few minutes since the free API tier is rate-limited.
       </p>
       <div class="full-row">
         <button class="btn secondary" id="sync-players-btn" onclick="syncPlayers()">Sync Players</button>
@@ -134,7 +137,7 @@
       <p id="player-sync-status" class="status-msg"></p>
     </section>
 
-    <section class="rules-section">
+    <section class="rules-section" id="keepers">
       <h2>6. Keepers &amp; Traded Picks</h2>
       <p style="color:var(--text-dim);font-size:0.88rem;">Set these <em>before</em> draft day. A keeper is recorded as
         that team's pick in the round the rules assign it (prior-season round, after any Bump Up), so it fills its cell on
@@ -142,7 +145,7 @@
         changes — matching the rule that the acquiring team gets an extra pick in that round and the original team loses
         theirs.</p>
 
-      <h3 style="font-size:0.95rem;margin:18px 0 8px;">Add a Keeper</h3>
+      <h3 id="add-keeper" style="font-size:0.95rem;margin:18px 0 8px;">Add a Keeper</h3>
       <form class="pick-form" onsubmit="return false;">
         <div class="pick-row keeper-row-lead">
           <div>
@@ -185,11 +188,12 @@
       <p id="keeper-status" class="status-msg"></p>
       <div id="keeper-list" class="traded-list"></div>
 
-      <h3 style="font-size:0.95rem;margin:22px 0 8px;">Traded Picks</h3>
+      <h3 id="traded-picks" style="font-size:0.95rem;margin:22px 0 8px;">Traded Picks</h3>
       <p style="color:var(--text-dim);font-size:0.88rem;">Pick trades are a swap: each side gives up a pick, and the two
         must be from different rounds. Example — Quattro Formaggio trades its 10th rounder to Bad News Hilts for their
         3rd rounder. The Firesale limit is enforced here: per round band (rounds 1–3, 4–7, and 8+), each team may
-        trade away one pick and trade for one pick per season.</p>
+        trade away one pick and trade for one pick per season. Tick <em>Override league rules</em> to push a trade
+        through anyway — the commissioner's call sticks, and the trade is flagged as an override in the list below.</p>
       <form class="pick-form" onsubmit="return false;">
         <div class="pick-row trade-leg">
           <div>
@@ -213,125 +217,31 @@
         </div>
         <div class="full-row">
           <button class="btn" onclick="recordTrade()">Record Trade</button>
+          <label class="checkbox-label" title="Records the trade even if it breaks the different-rounds or Firesale rules.">
+            <input type="checkbox" id="trade-override" /> Override league rules
+          </label>
         </div>
       </form>
       <p id="trade-status" class="status-msg"></p>
       <div id="trade-list" class="traded-list"></div>
     </section>
 
-    <section class="rules-section">
-      <h2>7. Record a Pick Manually</h2>
-      <p style="color:var(--text-dim);font-size:0.88rem;">Fallback for leagues not drafting in Yahoo, or to fix a synced pick.
-        Player Name matches loosely — typos, apostrophes and initials are all forgiven, and last name first is fine
-        ("jamar chase", "ajbrown" and "chase jamarr" all land on Ja'Marr Chase). Position and NFL Team narrow that
-        list, and fill in on their own once you pick a player from it. Position lists our roster slots, not raw NFL
-        positions — W/R/T spans WR, RB and TE, and DEF offers the 32 team defenses by name (individual defenders
-        aren't draftable). The form opens on whichever pick is on the clock and
-        advances in snake order after each save (stepping back on Undo). To correct an earlier pick, set Pick # to it —
-        Round, Team and the recorded player load in, and saving overwrites that pick rather than appending a new one.</p>
-      <form class="pick-form" onsubmit="return false;">
-        <!-- Pick # and Round are 2-3 digits; Team takes the rest of the line. -->
-        <div class="pick-row pick-row-lead">
-          <div>
-            <label>Pick #</label>
-            <input id="pick-number" type="number" min="1" />
-          </div>
-          <div>
-            <label>Round</label>
-            <input id="pick-round" type="number" min="1" />
-          </div>
-          <div>
-            <label>Team (Owner)</label>
-            <select id="pick-slot"></select>
-          </div>
-        </div>
-        <!-- The player fields share a row of their own, below Pick #/Round/Team. -->
-        <div class="pick-row">
-          <div class="player-autocomplete">
-            <label>Player Name</label>
-            <input id="pick-player" type="text" placeholder="e.g. Ja'Marr Chase" autocomplete="off" />
-            <div id="player-suggestions" class="search-results" hidden></div>
-          </div>
-          <div>
-            <label>Position</label>
-            <select id="pick-position">
-              <option value="">All skill positions</option>
-              <option value="QB">QB — Quarterback</option>
-              <option value="RB">RB — Running Back</option>
-              <option value="WR">WR — Wide Receiver</option>
-              <option value="TE">TE — Tight End</option>
-              <option value="W/R/T">W/R/T — WR / RB / TE</option>
-              <option value="K">K — Kicker</option>
-              <option value="DEF">DEF — Defense</option>
-            </select>
-          </div>
-          <div>
-            <label>NFL Team</label>
-            <select id="pick-nflteam"><option value="">Any NFL team</option></select>
-          </div>
-        </div>
-        <div class="full-row">
-          <button class="btn" onclick="submitPick()">Add Pick</button>
-          <button class="btn secondary" onclick="undoLastPick()">Undo Last Pick</button>
-        </div>
-      </form>
-      <p id="pick-status" class="status-msg"></p>
-    </section>
-
-    <section class="rules-section">
-      <!-- The clock controls live with the board they act on, not with the pick form. -->
-      <div class="preview-head">
-        <h2>Live Preview</h2>
-        <span class="clock-controls">
-          <button type="button" class="icon-btn" id="board-view-grid" aria-label="Grid view" title="Grid view">▦</button>
-          <button type="button" class="icon-btn" id="board-view-list" aria-label="List view" title="List view">☰</button>
-          <button class="btn secondary" id="clock-toggle" onclick="togglePickClock()">Pause Clock</button>
-          <button class="btn secondary" onclick="resetPickClock()">Reset Clock</button>
-          <label class="checkbox-label" title="Reset puts a full clock on the board but leaves it frozen until you resume it.">
-            <input type="checkbox" id="clock-pause-after" /> Pause after reset
-          </label>
-        </span>
+    <section class="rules-section" id="board-colors">
+      <h2>7. Board Colors</h2>
+      <p style="color:var(--text-dim);font-size:0.88rem;">Every recorded pick is tinted by the drafted player's
+        position, and the key sits above the board. Change a color here and the swatches update as you drag —
+        nothing is stored until you hit Save. Saving applies it for everyone watching the live board, instantly.
+        Related positions travel together: FB is colored as a Running Back, and PK and D/ST as Kicker and Defense.</p>
+      <div id="position-color-inputs" class="position-colors"></div>
+      <div class="full-row">
+        <button class="btn" onclick="savePositionColors()">Save Colors</button>
+        <button class="btn secondary" onclick="resetPositionColors()">Reset to Defaults</button>
       </div>
-      <div class="board-wrap"><div id="board">Loading…</div></div>
-
-      <!-- Anchored over whichever board cell is being edited, but deliberately
-           NOT rendered inside it: renderBoard() replaces #board's innerHTML on
-           every realtime update, which would destroy an in-cell editor mid-typing
-           along with the autocomplete listeners bound to its input. Living out
-           here, it survives re-renders and just re-anchors itself. -->
-      <div class="inline-pick-editor" id="inline-editor" hidden>
-        <div class="inline-editor-head">
-          <span id="inline-editor-title"></span>
-          <button type="button" class="icon-btn small" id="inline-cancel" aria-label="Close editor" title="Close">✕</button>
-        </div>
-        <div class="player-autocomplete">
-          <input id="inline-player" type="text" placeholder="Player name" autocomplete="off" />
-          <div id="inline-suggestions" class="search-results" hidden></div>
-        </div>
-        <div class="inline-editor-fields">
-          <select id="inline-position">
-            <option value="">All skill positions</option>
-            <option value="QB">QB — Quarterback</option>
-            <option value="RB">RB — Running Back</option>
-            <option value="WR">WR — Wide Receiver</option>
-            <option value="TE">TE — Tight End</option>
-            <option value="W/R/T">W/R/T — WR / RB / TE</option>
-            <option value="K">K — Kicker</option>
-            <option value="DEF">DEF — Defense</option>
-          </select>
-          <select id="inline-nflteam"><option value="">Any NFL team</option></select>
-        </div>
-        <div class="inline-editor-actions">
-          <button type="button" class="btn" id="inline-save">Save</button>
-          <button type="button" class="btn secondary" id="inline-reset"
-                  title="Clear the fields so you can search from scratch. Nothing is saved until you press Save.">Reset</button>
-          <button type="button" class="btn danger" id="inline-delete"
-                  title="Delete this pick from the board, leaving the cell empty.">Purge</button>
-        </div>
-        <p class="inline-editor-note" id="inline-editor-note"></p>
-      </div>
+      <p id="position-color-status" class="status-msg"></p>
     </section>
   </div>
+
+  <aside class="page-toc" id="page-toc" aria-label="On this page" hidden></aside>
 </main>
 
 <footer class="site-footer">Commissioner tools — not indexed, not linked from the public nav.</footer>
@@ -344,111 +254,50 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/countdown.js"></script>
 <script src="js/search.js"></script>
+<script src="js/page-toc.js"></script>
+<script src="js/admin-core.js"></script>
 <script>
-  // Cosmetic-looking, but real: this password is sent as x-admin-password
-  // on every write call and checked server-side against the ADMIN_PASSWORD
-  // env var (lib/auth.js). Only the local UI-unlock check below is
-  // client-side; nothing gets written without the server agreeing too.
-  function checkPassword() {
-    const val = document.getElementById("gate-password").value;
-    // fetch's Headers only accepts ISO-8859-1 in header values, and this
-    // password is sent as the x-admin-password header on every write call —
-    // catch a stray smart-quote/em-dash/emoji (common from pasting out of
-    // Notes/Word/a password manager) here instead of a cryptic fetch error
-    // on the first write.
-    if (/[^\x00-\xFF]/.test(val)) {
-      document.getElementById("gate-error").textContent =
-        "Password contains a character outside plain ASCII/Latin-1 (often from pasting from Notes, Word, or a password manager) — retype it directly instead of pasting.";
-      return;
-    }
-    localStorage.setItem("hmc_admin_password", val);
-    document.getElementById("gate").style.display = "none";
-    document.getElementById("admin-content").style.display = "block";
-    initAdmin();
-  }
+  // Pre-draft setup only. The pick-entry form, the live board and the clock are
+  // on draft-entry.html; the plumbing both pages share (password gate, config
+  // load, realtime, player autocomplete) is in js/admin-core.js.
 
-  let sb = null;
-  let currentConfig = null;
-  let currentPicks = null;
-  let liveSyncTimer = null;
-  // Shares draft.html's stored preference — the same person watching the public
-  // board and running the draft shouldn't have to set the layout twice.
-  let boardView = localStorage.getItem("hmc-board-view") === "list" ? "list" : "grid";
+  let keeperAutocomplete = null;
 
-  // Grid (one column per team) vs. list (chronological, one row per pick).
-  // Click-to-edit works in either — renderBoard() marks recorded picks clickable
-  // the same way in both layouts.
-  function wireBoardViewToggle() {
-    const gridBtn = document.getElementById("board-view-grid");
-    const listBtn = document.getElementById("board-view-list");
-    function apply() {
-      gridBtn.classList.toggle("active", boardView === "grid");
-      listBtn.classList.toggle("active", boardView === "list");
-    }
-    function setBoardView(view) {
-      boardView = view;
-      localStorage.setItem("hmc-board-view", view);
-      apply();
-      refreshBoard();
-    }
-    apply();
-    gridBtn.addEventListener("click", () => setBoardView("grid"));
-    listBtn.addEventListener("click", () => setBoardView("list"));
-  }
-
-  async function initAdmin() {
-    wirePlayerAutocomplete();
-    wirePickForm();
-    wireBoardViewToggle();
-    wireInlineEditor();
-    loadPlayerFilterOptions(); // constants only — must not wait on Supabase, or hide behind its failure paths
-    sb = getSupabaseClient();
-    if (new URLSearchParams(location.search).get("yahoo") === "connected") {
-      document.getElementById("yahoo-status").textContent = "Yahoo account connected.";
-      document.getElementById("yahoo-status").className = "status-msg ok";
-    }
-    if (!sb) {
-      document.getElementById("board").innerHTML = `<p style="color:var(--text-dim);">
-        Not connected to Supabase yet — set SUPABASE_URL / SUPABASE_ANON_KEY in js/config.js.</p>`;
-      return;
-    }
-    // Warm the autocomplete's player list now rather than on the first
-    // keystroke, so typing a name never waits on a fetch. Failing here is
-    // survivable: loadPlayerIndex() doesn't cache the failure, so the first
-    // search tries again.
-    loadPlayerIndex().catch((e) => console.warn("Player list preload failed:", e.message));
-    await loadAll();
+  // Called by admin-core.js once the gate is cleared, before the first load.
+  function initPage() {
+    keeperAutocomplete = createPlayerAutocomplete({
+      inputId: "keeper-player", dropdownId: "keeper-suggestions",
+      positionId: "keeper-position", teamId: "keeper-nflteam"
+    });
+    wirePositionColorInputs();
+    initPageToc();
     // The reset lock turns on with the passage of time, not with a database
     // change, so nothing would re-evaluate it on a tab sitting open across the
     // draft's start time. Re-check on a timer as well as on every load.
     setInterval(renderDraftModeControls, 30000);
-    sb.channel("admin-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "draft_picks" }, () => loadAll())
-      .on("postgres_changes", { event: "*", schema: "public", table: "draft_config" }, () => loadAll())
-      .subscribe();
   }
 
-  // The one place the admin board is rendered. editingOverall is read from the
-  // form rather than passed in, because the form and the board have to agree
-  // about which pick is loaded no matter which of them moved last.
-  function refreshBoard() {
-    // renderBoard() tolerates a null/undefined picks array internally
-    // ((picks || []) on every access) — only a missing config is fatal here.
-    if (!currentConfig) return;
-    renderBoard("board", currentConfig, currentPicks, {
-      view: boardView,
-      onPickClick: editPick,
-      // While the inline editor is open it owns the highlight — otherwise the
-      // outline would sit on whatever pick the entry form happens to point at.
-      editingOverall:
-        inlineEditOverall !== null
-          ? inlineEditOverall
-          : Number(document.getElementById("pick-number").value) || null
-    });
-    // The board it was anchored to has just been replaced; re-measure against
-    // the new cell (or close, if that pick is no longer on the board).
-    anchorInlineEditor();
-  }
+  // Runs after every load and every realtime refresh.
+  onAdminLoad(() => {
+    // Skip re-rendering the team-order inputs while someone's actively
+    // typing in one (a realtime event mid-edit would otherwise wipe it).
+    const teamInputsEl = document.getElementById("team-inputs");
+    if (!teamInputsEl.contains(document.activeElement)) renderTeamInputs();
+    const draftDateEl = document.getElementById("draft-date-input");
+    const draftTimeEl = document.getElementById("draft-time-input");
+    if (document.activeElement !== draftDateEl && document.activeElement !== draftTimeEl) {
+      const picker = draftDateToPickerValues(currentConfig.draftDate);
+      draftDateEl.value = picker.date;
+      draftTimeEl.value = picker.time;
+      previewDraftDate();
+    }
+    renderKeeperList();
+    renderTradeList();
+    renderDraftModeControls();
+    renderPositionColorInputs();
+  });
+
+  // ── Draft mode & board reset ──────────────────────────────────────────────
 
   // Why resetting the board is refused right now, or null when it's allowed.
   // Mirrors the server-side guard in api/picks/[action].js — the server is the
@@ -531,59 +380,104 @@
     }
   }
 
-  async function loadAll() {
-    const [{ data: cfgRows }, { data: picks }] = await Promise.all([
-      sb.from("draft_config").select("*").eq("id", 1).limit(1),
-      sb.from("draft_picks").select("*").order("overall_pick")
-    ]);
-    currentConfig = {
-      rounds: cfgRows[0].rounds,
-      teams: cfgRows[0].teams,
-      draftDate: cfgRows[0].draft_date,
-      // Columns are new; tolerate a project whose schema hasn't been re-run yet.
-      traded_picks: cfgRows[0].traded_picks || [],
-      clock_state: cfgRows[0].clock_state || {},
-      // Absent until schema.sql is re-run — treat that as the safe end of the
-      // range, so an un-migrated project behaves like a live draft.
-      draftMode: cfgRows[0].draft_mode || "live"
-    };
-    currentPicks = picks;
-    // Skip re-rendering the team-order inputs while someone's actively
-    // typing in one (a realtime event mid-edit would otherwise wipe it).
-    const teamInputsEl = document.getElementById("team-inputs");
-    if (!teamInputsEl.contains(document.activeElement)) renderTeamInputs();
-    const draftDateEl = document.getElementById("draft-date-input");
-    const draftTimeEl = document.getElementById("draft-time-input");
-    if (document.activeElement !== draftDateEl && document.activeElement !== draftTimeEl) {
-      const picker = draftDateToPickerValues(currentConfig.draftDate);
-      draftDateEl.value = picker.date;
-      draftTimeEl.value = picker.time;
-      previewDraftDate();
-    }
-    renderSlotSelect();
-    // Point the pick form at whoever's on the clock. Skipped once the form is
-    // in use — this also runs on every realtime event, and must not yank the
-    // form away from a commissioner mid-entry or mid-correction.
-    const pickFormEl = document.querySelector("form.pick-form");
-    const pickFormInUse =
-      pickFormEl.contains(document.activeElement) ||
-      document.getElementById("pick-player").value.trim() !== "";
-    if (!pickFormInUse) goToPick(nextOverallPick());
-    renderKeeperList();
-    renderTradeList();
-    renderClockControls();
-    renderDraftModeControls();
-    // goToPick() refreshes the board itself, so the idle path is normally
-    // already covered — refreshing again here would rebuild the whole board
-    // twice on every realtime event. But goToPick() returns early (without
-    // rendering) when there are no teams yet, so that case needs a render
-    // here too or the board is stuck on "Loading..." forever.
-    if (pickFormInUse || !currentConfig.teams.length) refreshBoard();
+  // ── Board colors ────────────────────────────────────────────────────────
+  // The palette is CSS custom properties on <html>, so a change repaints every
+  // cell and the legend without re-rendering the board — which is what lets the
+  // pickers preview live while they're being dragged. The Draft Day board and
+  // the public board pick the saved palette up on their next load.
+
+  // What the pickers are showing while it differs from what's saved. null means
+  // "no local edits", which is also the signal that a realtime refresh is free
+  // to repopulate them.
+  let pendingPositionColors = null;
+
+  function positionColorsFromInputs() {
+    const colors = {};
+    document.querySelectorAll("#position-color-inputs input[type=color]").forEach((input) => {
+      colors[input.dataset.group] = input.value.toLowerCase();
+    });
+    return colors;
   }
+
+  // Delegated and wired once: renderPositionColorInputs() replaces the
+  // container's innerHTML, which would strip per-input listeners.
+  function wirePositionColorInputs() {
+    document.getElementById("position-color-inputs").addEventListener("input", (e) => {
+      const input = e.target.closest('input[type="color"]');
+      if (!input) return;
+      pendingPositionColors = positionColorsFromInputs();
+      applyPositionColors(pendingPositionColors);
+      const status = document.getElementById("position-color-status");
+      status.textContent = "Previewing — the league still sees the saved colors until you hit Save.";
+      status.className = "status-msg";
+    });
+  }
+
+  // Pass a palette to force the pickers onto it (Reset); otherwise they're
+  // repopulated from the saved config, and left alone if they're mid-edit.
+  function renderPositionColorInputs(override) {
+    const box = document.getElementById("position-color-inputs");
+    if (!box || !currentConfig) return;
+    if (!override && (box.contains(document.activeElement) || pendingPositionColors)) {
+      // loadAll() has just repainted from the saved palette — put the unsaved
+      // preview back, so a realtime event can't undo it mid-edit.
+      if (pendingPositionColors) applyPositionColors(pendingPositionColors);
+      return;
+    }
+    const colors = override || resolvePositionColors(currentConfig.positionColors);
+    applyPositionColors(colors);
+    box.innerHTML = POSITION_GROUPS.map(
+      (g) => `<label class="position-color-row pos-${g.id}">
+        <input type="color" data-group="${g.id}" value="${colors[g.id]}"
+               aria-label="${escapeHtml(g.label)} color" />
+        <span class="position-color-name">${escapeHtml(g.label)}</span>
+        <span class="meta">${escapeHtml(g.covers.join(" · "))}</span>
+      </label>`
+    ).join("");
+  }
+
+  async function savePositionColors() {
+    const status = document.getElementById("position-color-status");
+    const colors = positionColorsFromInputs();
+    const defaults = defaultPositionColors();
+    // An untouched palette is stored as {} rather than as a copy of the
+    // defaults, so the row stays clean and a future change to the stylesheet's
+    // colours still reaches this league.
+    const isDefault = POSITION_GROUPS.every((g) => colors[g.id] === defaults[g.id].toLowerCase());
+    try {
+      await callAdminApi("/api/draft-config/save", { positionColors: isDefault ? {} : colors });
+      pendingPositionColors = null;
+      status.textContent = isDefault
+        ? "Back to the default colors — the live board is updated."
+        : "Colors saved — the live board is updated.";
+      status.className = "status-msg ok";
+      await loadAll();
+    } catch (e) {
+      // The column is newer than the rest of the schema, so this is the one
+      // failure worth naming explicitly.
+      const hint = /position_colors/.test(e.message)
+        ? " Re-run supabase/schema.sql in the Supabase SQL Editor to add the position_colors column."
+        : "";
+      status.textContent = "Error: " + e.message + hint;
+      status.className = "status-msg err";
+    }
+  }
+
+  function resetPositionColors() {
+    pendingPositionColors = defaultPositionColors();
+    renderPositionColorInputs(pendingPositionColors);
+    const status = document.getElementById("position-color-status");
+    status.textContent = "Showing the default colors — hit Save Colors to make it stick.";
+    status.className = "status-msg";
+  }
+
+  // ── Draft order ───────────────────────────────────────────────────────────
 
   let yahooTeamOptions = []; // [{ name, manager }], populated by loadYahooTeams()
   let dragSrcRow = null;
 
+  // Labels Yahoo's team list during draft-order setup. Distinct from
+  // draftTeamLabel() in js/admin-core.js, which labels our own configured slots.
   function teamOptionLabel(t) {
     return t.manager ? `${t.name} — ${t.manager}` : t.name;
   }
@@ -685,44 +579,19 @@
     });
   }
 
-  // "Team Name (Manager)" — the slot number is still the option's value, it just
-  // isn't what you read. Teams without a manager recorded fall back to the slot
-  // so the parenthetical never renders empty.
-  // Note: distinct from teamOptionLabel() above, which labels Yahoo's team list
-  // during draft-order setup. This one labels our own configured slots.
-  function draftTeamLabel(t) {
-    const who = (t.manager || "").trim() || `slot ${t.slot}`;
-    return `${t.owner} (${who})`;
-  }
-
-  function renderSlotSelect() {
-    const options = currentConfig.teams
-      .map((t) => `<option value="${t.slot}">${escapeHtml(draftTeamLabel(t))}</option>`)
-      .join("");
-    // Every team dropdown on the page draws from the same draft order.
-    ["pick-slot", "keeper-slot", "trade-team-a", "trade-team-b"].forEach((id) => {
-      const select = document.getElementById(id);
-      if (!select) return;
-      const previous = select.value;
-      select.innerHTML = options;
-      if (currentConfig.teams.some((t) => String(t.slot) === previous)) select.value = previous;
-    });
-    // Both sides of a trade would otherwise default to the same team, which is
-    // the one combination the form rejects.
-    const teamB = document.getElementById("trade-team-b");
-    if (teamB && !teamB.dataset.touched && currentConfig.teams[1]) {
-      teamB.value = String(currentConfig.teams[1].slot);
-      teamB.addEventListener("change", () => { teamB.dataset.touched = "1"; }, { once: true });
-    }
-  }
-
-  async function syncNow() {
-    const status = document.getElementById("yahoo-status");
-    status.textContent = "Syncing…";
-    status.className = "status-msg";
+  async function saveDraftOrder() {
+    const status = document.getElementById("order-status");
     try {
-      const result = await callAdminApi("/api/yahoo/sync", {});
-      status.textContent = result.message || `Synced ${result.synced} pick(s) from Yahoo.`;
+      const rows = document.querySelectorAll("#team-inputs .draft-order-row");
+      const teams = Array.from(rows).map((row, i) => {
+        const select = row.querySelector(".team-owner-select");
+        const customInput = row.querySelector(".team-owner-custom");
+        const owner = select.value === "__custom__" ? customInput.value.trim() || "TBD" : select.value;
+        const manager = row.querySelector(".team-manager").value.trim();
+        return { slot: i + 1, owner, manager };
+      });
+      await callAdminApi("/api/draft-config/save", { teams });
+      status.textContent = "Draft order saved.";
       status.className = "status-msg ok";
     } catch (e) {
       status.textContent = "Error: " + e.message;
@@ -730,63 +599,7 @@
     }
   }
 
-  function toggleLiveSync() {
-    const on = document.getElementById("live-sync-toggle").checked;
-    if (on) {
-      syncNow();
-      liveSyncTimer = setInterval(syncNow, 20000);
-    } else if (liveSyncTimer) {
-      clearInterval(liveSyncTimer);
-      liveSyncTimer = null;
-    }
-  }
-
-  const PLAYER_SYNC_PAGE_DELAY_MS = 13000; // balldontlie free tier: 5 req/min
-  const PLAYER_SYNC_MAX_RETRIES = 5;
-  const PLAYER_SYNC_RETRY_FALLBACK_MS = 30000; // used when balldontlie sends no Retry-After
-
-  async function syncPlayers() {
-    const status = document.getElementById("player-sync-status");
-    const btn = document.getElementById("sync-players-btn");
-    btn.disabled = true;
-    let cursor = null;
-    let total = 0;
-    let retries = 0;
-    let done = false;
-    try {
-      while (!done) {
-        status.textContent = `Syncing… ${total} players so far.`;
-        status.className = "status-msg";
-        let result;
-        try {
-          result = await callAdminApi("/api/players/sync-page", { cursor });
-          retries = 0;
-        } catch (e) {
-          if (e.retryAfterSeconds === undefined || ++retries > PLAYER_SYNC_MAX_RETRIES) throw e;
-          const waitMs = e.retryAfterSeconds ? e.retryAfterSeconds * 1000 : PLAYER_SYNC_RETRY_FALLBACK_MS;
-          status.textContent = `Rate limited — retrying in ${Math.round(waitMs / 1000)}s (attempt ${retries}/${PLAYER_SYNC_MAX_RETRIES})…`;
-          await new Promise((r) => setTimeout(r, waitMs));
-          continue; // retry the same cursor, no progress lost
-        }
-        total += result.synced;
-        cursor = result.nextCursor;
-        done = !cursor;
-        if (!done) await new Promise((r) => setTimeout(r, PLAYER_SYNC_PAGE_DELAY_MS));
-      }
-      // The autocompletes are searching a copy of the list taken at page load —
-      // drop it so the players just synced are findable without a reload.
-      playerIndex = null;
-      playerIndexPromise = null;
-      loadPlayerIndex().catch(() => {}); // refill in the background; a keystroke retries on failure
-      status.textContent = `Done — synced ${total} players.`;
-      status.className = "status-msg ok";
-    } catch (e) {
-      status.textContent = "Error: " + e.message;
-      status.className = "status-msg err";
-    } finally {
-      btn.disabled = false;
-    }
-  }
+  // ── Draft date ────────────────────────────────────────────────────────────
 
   // Reads the pickers and builds the string that gets stored — null when no
   // date is picked yet.
@@ -847,409 +660,51 @@
     }
   }
 
-  async function saveDraftOrder() {
-    const status = document.getElementById("order-status");
+  // ── Player database ───────────────────────────────────────────────────────
+
+  const PLAYER_SYNC_PAGE_DELAY_MS = 13000; // balldontlie free tier: 5 req/min
+  const PLAYER_SYNC_MAX_RETRIES = 5;
+  const PLAYER_SYNC_RETRY_FALLBACK_MS = 30000; // used when balldontlie sends no Retry-After
+
+  async function syncPlayers() {
+    const status = document.getElementById("player-sync-status");
+    const btn = document.getElementById("sync-players-btn");
+    btn.disabled = true;
+    let cursor = null;
+    let total = 0;
+    let retries = 0;
+    let done = false;
     try {
-      const rows = document.querySelectorAll("#team-inputs .draft-order-row");
-      const teams = Array.from(rows).map((row, i) => {
-        const select = row.querySelector(".team-owner-select");
-        const customInput = row.querySelector(".team-owner-custom");
-        const owner = select.value === "__custom__" ? customInput.value.trim() || "TBD" : select.value;
-        const manager = row.querySelector(".team-manager").value.trim();
-        return { slot: i + 1, owner, manager };
-      });
-      await callAdminApi("/api/draft-config/save", { teams });
-      status.textContent = "Draft order saved.";
+      while (!done) {
+        status.textContent = `Syncing… ${total} players so far.`;
+        status.className = "status-msg";
+        let result;
+        try {
+          result = await callAdminApi("/api/players/sync-page", { cursor });
+          retries = 0;
+        } catch (e) {
+          if (e.retryAfterSeconds === undefined || ++retries > PLAYER_SYNC_MAX_RETRIES) throw e;
+          const waitMs = e.retryAfterSeconds ? e.retryAfterSeconds * 1000 : PLAYER_SYNC_RETRY_FALLBACK_MS;
+          status.textContent = `Rate limited — retrying in ${Math.round(waitMs / 1000)}s (attempt ${retries}/${PLAYER_SYNC_MAX_RETRIES})…`;
+          await new Promise((r) => setTimeout(r, waitMs));
+          continue; // retry the same cursor, no progress lost
+        }
+        total += result.synced;
+        cursor = result.nextCursor;
+        done = !cursor;
+        if (!done) await new Promise((r) => setTimeout(r, PLAYER_SYNC_PAGE_DELAY_MS));
+      }
+      // The keeper autocomplete is searching a copy of the list taken at page
+      // load — drop it so the players just synced are findable without a reload.
+      invalidatePlayerIndex();
+      status.textContent = `Done — synced ${total} players.`;
       status.className = "status-msg ok";
     } catch (e) {
       status.textContent = "Error: " + e.message;
       status.className = "status-msg err";
+    } finally {
+      btn.disabled = false;
     }
-  }
-
-  async function submitPick() {
-    const status = document.getElementById("pick-status");
-    try {
-      const round = Number(document.getElementById("pick-round").value);
-      const slot = Number(document.getElementById("pick-slot").value);
-      const player = document.getElementById("pick-player").value.trim();
-      // Position/NFL Team are autocomplete filters, so they may be left on
-      // "Any" — prefer the picked player's own values when we have them.
-      const sel = pickAutocomplete.selected;
-      const matched = sel && sel.name === player ? sel : null;
-      // Falling back to the filter only works when it names one position —
-      // "W/R/T" spans three, so a free-typed name under it records no position.
-      const slotFilter = document.getElementById("pick-position").value;
-      const position = matched
-        ? matched.position || ""
-        : slotFilter === "W/R/T" ? "" : slotFilter;
-      const nflTeam = matched ? matched.nflTeam || "" : document.getElementById("pick-nflteam").value;
-      if (!round || !slot || !player) {
-        status.textContent = "Round, team, and player are required.";
-        status.className = "status-msg err";
-        return;
-      }
-      // slot stays the board position; the team recorded is whoever actually
-      // owns that pick, which differs once it's been traded.
-      const team = teamNameForPick(round, slot);
-      // Editing a keeper must leave it a keeper: without this the row comes back
-      // as a manual pick and the save restarts everyone's clock, for a pick that
-      // was entered days before draft day.
-      const result = await callAdminApi("/api/picks/add", {
-        round, slot, player, position, nflTeam, team,
-        numTeams: currentConfig.teams.length,
-        source: loadedPickSource === "keeper" ? "keeper" : undefined
-      });
-      // Moves to the next open pick and clears Player/Position/NFL Team along
-      // the way — important because those dropdowns now track the last player
-      // picked, so leaving them would pin the next search to (say) WR/CIN.
-      goToPick(nextOverallPick(result.overallPick));
-      status.textContent = `Saved pick #${result.overallPick}.`;
-      status.className = "status-msg ok";
-    } catch (e) {
-      status.textContent = "Error: " + e.message;
-      status.className = "status-msg err";
-    }
-  }
-
-  // The pick the board shows as on the clock: the first one with nothing
-  // recorded against it. Matches renderBoard()'s highlight, so the form and the
-  // board agree. It can't be picksMade + 1 — keepers fill scattered rounds
-  // before the draft, so the recorded picks aren't a contiguous run from #1.
-  // justSaved covers the moment right after a write, before the realtime
-  // update has refreshed currentPicks.
-  function nextOverallPick(justSaved) {
-    const filled = new Set((currentPicks || []).map((p) => p.overall_pick));
-    if (justSaved) filled.add(justSaved);
-    const total = currentConfig.teams.length * currentConfig.rounds;
-    for (let o = 1; o <= total; o++) if (!filled.has(o)) return o;
-    return total;
-  }
-
-  // The team that actually makes the pick at (round, slot) — the slot's own
-  // team unless that pick was traded away.
-  function teamNameForPick(round, slot) {
-    const owning = pickingSlotFor(round, slot, currentConfig.traded_picks || []);
-    return currentConfig.teams.find((t) => t.slot === owning)?.owner || `Slot ${owning}`;
-  }
-
-  // Point the whole form at one overall pick. Round and Team (slot) follow the
-  // snake order from js/draftboard.js — so entering picks in sequence needs no
-  // hand-editing, and the reversal at each round boundary is automatic — and
-  // any pick already recorded there is loaded for correction.
-  function goToPick(overallPick) {
-    if (!currentConfig || !currentConfig.teams.length) return;
-    const numTeams = currentConfig.teams.length;
-    const totalPicks = numTeams * currentConfig.rounds;
-    const target = Math.min(Math.max(Math.round(overallPick) || 1, 1), totalPicks);
-    const { round, slot } = slotForOverallPick(target, numTeams);
-    document.getElementById("pick-number").value = target;
-    document.getElementById("pick-round").value = round;
-    const slotSelect = document.getElementById("pick-slot");
-    if ([...slotSelect.options].some((o) => o.value === String(slot))) slotSelect.value = String(slot);
-    loadExistingPick(target);
-    refreshBoard();
-  }
-
-  // Which pick the inline board editor is open on, or null when it's closed.
-  // Also drives the board's "editing" outline, so the highlight follows the
-  // editor rather than the entry form while one is open.
-  let inlineEditOverall = null;
-
-  // Clicking a recorded pick on the Live Preview opens an editor anchored over
-  // that cell — correct the player in place, or purge the pick and leave the
-  // cell empty. The entry form above stays the tool for entering picks in order.
-  function editPick(overallPick) {
-    openInlineEditor(overallPick);
-  }
-
-  function openInlineEditor(overallPick) {
-    if (!currentConfig) return;
-    const existing = (currentPicks || []).find((p) => p.overall_pick === overallPick);
-    if (!existing) return; // only recorded picks are editable this way
-
-    inlineEditOverall = overallPick;
-    const { round, slot } = slotForOverallPick(overallPick, currentConfig.teams.length);
-    document.getElementById("inline-editor-title").textContent =
-      `#${overallPick} · Rd ${round} · ${teamNameForPick(round, slot)}`;
-
-    const playerInput = document.getElementById("inline-player");
-    playerInput.value = existing.player || "";
-    // Deliberately left blank rather than seeded from the current pick: these two
-    // double as the autocomplete's filters, so pre-filling them with the outgoing
-    // player's position and team would narrow the search to exactly the player
-    // being replaced and return nothing for anyone else.
-    document.getElementById("inline-position").value = "";
-    document.getElementById("inline-nflteam").value = "";
-    // Stand-in for a suggestion click, as the entry form does: saving an
-    // untouched row keeps the exact position/NFL team it already had even though
-    // the dropdowns above are empty. Typing a new name clears it, and choosing a
-    // suggestion replaces it with that player's own values.
-    inlineAutocomplete.selected = { name: existing.player, position: existing.position, nflTeam: existing.nfl_team };
-
-    const note = document.getElementById("inline-editor-note");
-    const current = [existing.position, existing.nfl_team].filter(Boolean).join(" · ");
-    note.textContent =
-      (current ? `Currently ${current}. ` : "") +
-      (existing.source === "keeper" ? "A keeper — it stays one when saved." : "");
-    note.className = "inline-editor-note";
-
-    const editor = document.getElementById("inline-editor");
-    editor.hidden = false;
-    anchorInlineEditor();
-    refreshBoard(); // moves the editing outline onto this cell
-    playerInput.focus({ preventScroll: true });
-    playerInput.select();
-  }
-
-  function closeInlineEditor() {
-    if (inlineEditOverall === null) return;
-    inlineEditOverall = null;
-    inlineAutocomplete.hide();
-    document.getElementById("inline-editor").hidden = true;
-    refreshBoard();
-  }
-
-  // Positioned from the cell's own rect rather than rendered inside it, so the
-  // editor survives renderBoard() wiping #board on every realtime update. Called
-  // again after each render, and on scroll/resize, to stay on its cell.
-  function anchorInlineEditor() {
-    if (inlineEditOverall === null) return;
-    const editor = document.getElementById("inline-editor");
-    const cell = document.querySelector(`#board [data-overall="${inlineEditOverall}"]`);
-    // The pick can vanish under us — another admin purging it, or a Yahoo sync
-    // rewriting the board. Nothing left to anchor to, so close rather than
-    // leave the editor floating over an unrelated cell.
-    if (!cell) {
-      closeInlineEditor();
-      return;
-    }
-    const rect = cell.getBoundingClientRect();
-    // A cell scrolled out of the board's horizontal viewport would drag the
-    // editor off with it; hide it there instead of parking it over the header.
-    const wrapRect = document.querySelector(".board-wrap").getBoundingClientRect();
-    const offscreen = rect.right < wrapRect.left || rect.left > wrapRect.right;
-    editor.style.visibility = offscreen ? "hidden" : "visible";
-
-    const width = editor.offsetWidth || 300;
-    const height = editor.offsetHeight || 240;
-    // Prefer opening just below the cell; flip above when that would run off the
-    // bottom, and clamp to the viewport either way.
-    let top = rect.bottom + 6;
-    if (top + height > window.innerHeight - 8) top = Math.max(8, rect.top - height - 6);
-    const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
-    editor.style.top = `${top}px`;
-    editor.style.left = `${left}px`;
-  }
-
-  async function saveInlineEdit() {
-    const note = document.getElementById("inline-editor-note");
-    const overallPick = inlineEditOverall;
-    if (overallPick === null) return;
-    try {
-      const player = document.getElementById("inline-player").value.trim();
-      if (!player) {
-        note.textContent = "Player is required — use Purge to empty this cell.";
-        note.className = "inline-editor-note err";
-        return;
-      }
-      const { round, slot } = slotForOverallPick(overallPick, currentConfig.teams.length);
-      const existing = (currentPicks || []).find((p) => p.overall_pick === overallPick);
-      // Same rule as the entry form: a matched suggestion carries its own
-      // position/team, a free-typed name falls back to the dropdowns.
-      const sel = inlineAutocomplete.selected;
-      const matched = sel && sel.name === player ? sel : null;
-      const slotFilter = document.getElementById("inline-position").value;
-      const position = matched ? matched.position || "" : slotFilter === "W/R/T" ? "" : slotFilter;
-      const nflTeam = matched ? matched.nflTeam || "" : document.getElementById("inline-nflteam").value;
-
-      await callAdminApi("/api/picks/add", {
-        round, slot, player, position, nflTeam,
-        team: teamNameForPick(round, slot),
-        numTeams: currentConfig.teams.length,
-        source: existing && existing.source === "keeper" ? "keeper" : undefined,
-        // A correction to a pick already on the board, not a new pick landing —
-        // leave whoever is on the clock with the time they had.
-        restartClock: false
-      });
-      closeInlineEditor();
-      const status = document.getElementById("pick-status");
-      status.textContent = `Updated pick #${overallPick} — ${player}.`;
-      status.className = "status-msg ok";
-      await loadAll();
-    } catch (e) {
-      note.textContent = "Error: " + e.message;
-      note.className = "inline-editor-note err";
-    }
-  }
-
-  async function purgeInlinePick() {
-    const note = document.getElementById("inline-editor-note");
-    const overallPick = inlineEditOverall;
-    if (overallPick === null) return;
-    const existing = (currentPicks || []).find((p) => p.overall_pick === overallPick);
-    if (!window.confirm(`Purge pick #${overallPick}${existing ? ` (${existing.player})` : ""}? The cell goes back to empty.`)) {
-      return;
-    }
-    try {
-      const result = await callAdminApi("/api/picks/remove", { overallPick });
-      closeInlineEditor();
-      const status = document.getElementById("pick-status");
-      status.textContent = result.removed
-        ? `Purged pick #${overallPick} (${result.removed.player}) — the cell is empty again.`
-        : "That pick was already gone.";
-      status.className = "status-msg ok";
-      await loadAll();
-    } catch (e) {
-      note.textContent = "Error: " + e.message;
-      note.className = "inline-editor-note err";
-    }
-  }
-
-  // Empties the editor's fields back to "no player, any position, any NFL team"
-  // so the next search starts unfiltered. Deliberately touches nothing on the
-  // board — the pick is only changed once Save is pressed. Clearing the
-  // autocomplete's stand-in matters: without it, saving after a reset would
-  // quietly restore the outgoing player's position and NFL team.
-  function resetInlineFields() {
-    if (inlineEditOverall === null) return;
-    inlineAutocomplete.reset();
-    const note = document.getElementById("inline-editor-note");
-    note.textContent = "Fields cleared — search for a player, then Save.";
-    note.className = "inline-editor-note";
-    document.getElementById("inline-player").focus({ preventScroll: true });
-  }
-
-  function wireInlineEditor() {
-    document.getElementById("inline-save").addEventListener("click", saveInlineEdit);
-    document.getElementById("inline-reset").addEventListener("click", resetInlineFields);
-    document.getElementById("inline-delete").addEventListener("click", purgeInlinePick);
-    document.getElementById("inline-cancel").addEventListener("click", closeInlineEditor);
-
-    // Enter saves, Escape closes — but only once the autocomplete has had its
-    // turn, so Enter on a highlighted suggestion picks it instead of saving.
-    document.getElementById("inline-player").addEventListener("keydown", (e) => {
-      const dropdownOpen = !document.getElementById("inline-suggestions").hidden;
-      if (e.key === "Enter" && !dropdownOpen) {
-        e.preventDefault();
-        saveInlineEdit();
-      }
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && inlineEditOverall !== null) closeInlineEditor();
-    });
-
-    // Clicking another cell switches the editor to it; clicking anywhere else
-    // outside closes. The board listener fires first either way.
-    document.addEventListener("mousedown", (e) => {
-      if (inlineEditOverall === null) return;
-      // Not every mousedown target is an Element (document itself, for one), and
-      // .closest() only exists on Elements — without this the handler throws and
-      // the editor never closes.
-      const target = e.target instanceof Element ? e.target : null;
-      if (target && document.getElementById("inline-editor").contains(target)) return;
-      if (target && target.closest("#board .pick-cell.clickable")) return;
-      closeInlineEditor();
-    });
-
-    // Capture phase so the board's own horizontal scrolling re-anchors too, not
-    // just the window's.
-    window.addEventListener("scroll", anchorInlineEditor, true);
-    window.addEventListener("resize", anchorInlineEditor);
-  }
-
-  // The source of the row currently in the entry form ('keeper', 'yahoo',
-  // 'manual', or null when the pick is empty). Held so that re-saving a loaded
-  // pick preserves what kind of pick it was.
-  let loadedPickSource = null;
-
-  // Editing is just re-entry: POST /api/picks/add upserts on overall_pick, so
-  // loading a recorded pick back into the form and saving overwrites it.
-  function loadExistingPick(overallPick) {
-    const existing = (currentPicks || []).find((p) => p.overall_pick === overallPick);
-    const playerInput = document.getElementById("pick-player");
-    const positionSelect = document.getElementById("pick-position");
-    const teamSelect = document.getElementById("pick-nflteam");
-    const status = document.getElementById("pick-status");
-
-    // When the pick on screen was traded, the Team dropdown still shows the
-    // board column it sits in — so say plainly who's actually making it.
-    const { round, slot } = slotForOverallPick(overallPick, currentConfig.teams.length);
-    const owningSlot = pickingSlotFor(round, slot, currentConfig.traded_picks || []);
-    const tradedNote =
-      owningSlot !== slot
-        ? ` — traded pick: ${teamNameForPick(round, slot)} picks here (via ${
-            currentConfig.teams.find((t) => t.slot === slot)?.owner || `slot ${slot}`
-          }).`
-        : "";
-
-    if (!existing) {
-      loadedPickSource = null;
-      playerInput.value = "";
-      positionSelect.value = "";
-      teamSelect.value = "";
-      pickAutocomplete.selected = null;
-      status.textContent = tradedNote ? tradedNote.replace(/^ — /, "") : "";
-      status.className = "status-msg";
-      return;
-    }
-    loadedPickSource = existing.source || null;
-    playerInput.value = existing.player || "";
-    positionSelect.value = POSITION_TO_SLOT_OPTION[existing.position] || "";
-    teamSelect.value = NFL_TEAM_NAMES[existing.nfl_team] ? existing.nfl_team : "";
-    // Stand in for a suggestion click so re-saving an untouched row keeps the
-    // exact position/NFL team it already had, rather than the widened roster
-    // slot the dropdown shows (a "PK" would come back as "K").
-    pickAutocomplete.selected = { name: existing.player, position: existing.position, nflTeam: existing.nfl_team };
-    status.textContent =
-      `Editing pick #${overallPick} (${existing.player})${existing.source === "keeper" ? ", a keeper" : ""} — saving overwrites it.` +
-      tradedNote;
-    status.className = "status-msg";
-  }
-
-  // A team's earliest pick that hasn't been recorded yet — what you almost
-  // always want when you jump to a team out of order (someone drafted off-turn,
-  // or you're catching up one owner's picks). Falls back to their last pick when
-  // the team is fully drafted, so the pick stays editable rather than going nowhere.
-  // Walks the draft in overall order and considers only the picks this team
-  // actually owns — so picks it acquired by trade count, and picks it traded
-  // away are skipped.
-  function nextPickForSlot(slot) {
-    const numTeams = currentConfig.teams.length;
-    const traded = currentConfig.traded_picks || [];
-    const taken = new Set((currentPicks || []).map((p) => p.overall_pick));
-    const total = numTeams * currentConfig.rounds;
-    let last = null;
-    for (let overall = 1; overall <= total; overall++) {
-      const { round, slot: boardSlot } = slotForOverallPick(overall, numTeams);
-      if (pickingSlotFor(round, boardSlot, traded) !== slot) continue;
-      if (!taken.has(overall)) return overall;
-      last = overall;
-    }
-    return last;
-  }
-
-  function wirePickForm() {
-    document.getElementById("pick-number").addEventListener("change", (e) => {
-      goToPick(Number(e.target.value));
-    });
-    // Round keeps the team you're on and moves within it…
-    document.getElementById("pick-round").addEventListener("change", () => {
-      if (!currentConfig || !currentConfig.teams.length) return;
-      const round = Number(document.getElementById("pick-round").value);
-      const slot = Number(document.getElementById("pick-slot").value);
-      if (!round || !slot) return;
-      goToPick(overallPickForRoundSlot(round, slot, currentConfig.teams.length));
-    });
-    // …while picking a team jumps to that team's next open pick, whatever round
-    // that lands in — not their pick in the round currently showing.
-    document.getElementById("pick-slot").addEventListener("change", () => {
-      if (!currentConfig || !currentConfig.teams.length) return;
-      const slot = Number(document.getElementById("pick-slot").value);
-      if (!slot) return;
-      const target = nextPickForSlot(slot);
-      if (target) goToPick(target);
-    });
   }
 
   // ── Keepers ───────────────────────────────────────────────────────────────
@@ -1400,6 +855,14 @@
   // different rounds. Stored as two independent ownership entries, because the
   // board only ever asks "who makes this one pick?" — but entered and shown as
   // the single swap it actually is.
+  //
+  // The two league-rule checks (different rounds, and the Firesale band limit)
+  // are the commissioner's to waive — he settles trades off the board and this
+  // page has to be able to record whatever he allowed. With "Override league
+  // rules" ticked they become a note on the saved trade instead of a refusal.
+  // The structural checks below it — both teams filled in, two different teams,
+  // rounds this draft actually has — are never overridable: those describe
+  // picks that don't exist, and the board couldn't render them.
   async function recordTrade() {
     const status = document.getElementById("trade-status");
     const fail = (msg) => {
@@ -1411,21 +874,34 @@
       const roundA = Number(document.getElementById("trade-round-a").value);
       const slotB = Number(document.getElementById("trade-team-b").value);
       const roundB = Number(document.getElementById("trade-round-b").value);
+      const overrideEl = document.getElementById("trade-override");
+      const override = Boolean(overrideEl && overrideEl.checked);
 
       if (!slotA || !slotB || !roundA || !roundB) return fail("Both teams and both rounds are required.");
       if (slotA === slotB) return fail("A team can't trade with itself — pick two different teams.");
       if (roundA > currentConfig.rounds || roundB > currentConfig.rounds) {
         return fail(`This draft only has ${currentConfig.rounds} rounds.`);
       }
+
+      // Collected rather than returned on, so an overridden trade can report
+      // everything it broke in one message.
+      const broken = [];
       if (roundA === roundB) {
-        return fail(`Both sides are giving up a round-${roundA} pick. A trade has to be for a different round.`);
+        const msg = `both sides are giving up a round-${roundA} pick`;
+        if (!override) {
+          return fail(
+            `Both sides are giving up a round-${roundA} pick. A trade has to be for a different round — ` +
+              `tick "Override league rules" to record it anyway.`
+          );
+        }
+        broken.push(msg);
       }
 
       // Each leg replaces any earlier entry for that same pick, so re-trading a
       // pick doesn't stack a second, unreachable ownership record on top.
       const legs = [
-        { round: roundA, fromSlot: slotA, toSlot: slotB },
-        { round: roundB, fromSlot: slotB, toSlot: slotA }
+        { round: roundA, fromSlot: slotA, toSlot: slotB, override },
+        { round: roundB, fromSlot: slotB, toSlot: slotA, override }
       ];
       const rest = (currentConfig.traded_picks || []).filter(
         (t) => !legs.some((l) => Number(t.round) === l.round && Number(t.fromSlot) === l.fromSlot)
@@ -1436,21 +912,31 @@
       if (conflict) {
         const p = conflict.prior;
         const verb = conflict.direction === "trade away" ? "trading away" : "trading for";
-        return fail(
-          `Firesale rule: ${slotOwnerName(conflict.slot)} is already ${verb} a rounds ${conflict.band} pick ` +
-            `(round ${p.round}, ${slotOwnerName(p.fromSlot)} → ${slotOwnerName(p.toSlot)}). Each team may ` +
-            `${conflict.direction} only one pick per round band (1–3, 4–7, 8+) per season. Remove that trade ` +
-            `first, or use a round from a different band.`
+        if (!override) {
+          return fail(
+            `Firesale rule: ${slotOwnerName(conflict.slot)} is already ${verb} a rounds ${conflict.band} pick ` +
+              `(round ${p.round}, ${slotOwnerName(p.fromSlot)} → ${slotOwnerName(p.toSlot)}). Each team may ` +
+              `${conflict.direction} only one pick per round band (1–3, 4–7, 8+) per season. Remove that trade ` +
+              `first, use a round from a different band, or tick "Override league rules".`
+          );
+        }
+        broken.push(
+          `${slotOwnerName(conflict.slot)} is already ${verb} a rounds ${conflict.band} pick ` +
+            `(round ${p.round}, ${slotOwnerName(p.fromSlot)} → ${slotOwnerName(p.toSlot)})`
         );
       }
 
       await callAdminApi("/api/draft-config/save", { tradedPicks });
       document.getElementById("trade-round-a").value = "";
       document.getElementById("trade-round-b").value = "";
-      status.textContent =
+      if (overrideEl) overrideEl.checked = false;
+      const summary =
         `${slotOwnerName(slotA)} trades round ${roundA} to ${slotOwnerName(slotB)} ` +
         `for round ${roundB}.`;
-      status.className = "status-msg ok";
+      status.textContent = broken.length
+        ? `${summary} Recorded as a commissioner override — ${broken.join("; ")}.`
+        : summary;
+      status.className = broken.length ? "status-msg warn" : "status-msg ok";
     } catch (e) {
       fail("Error: " + e.message);
     }
@@ -1503,10 +989,6 @@
     return pairs;
   }
 
-  function slotOwnerName(slot) {
-    return currentConfig.teams.find((t) => t.slot === Number(slot))?.owner || `Slot ${slot}`;
-  }
-
   function renderTradeList() {
     const el = document.getElementById("trade-list");
     if (!el) return;
@@ -1523,410 +1005,19 @@
           pair.length === 2
             ? `${legText(pair[0])} <span class="swap">⇄</span> ${legText(pair[1])}`
             : `${legText(pair[0])} <span class="meta">(one-way)</span>`;
+        // Either leg carrying the flag marks the whole swap — they're saved
+        // together, so one is enough to say this one bypassed the rules.
+        const overridden = pair.some((t) => t.override);
         return `<div class="traded-row">
-          <span class="grow">${body}</span>
+          <span class="grow">${body}${
+            overridden
+              ? ` <span class="override-flag" title="Recorded by the commissioner against the league rules.">override</span>`
+              : ""
+          }</span>
           <button type="button" onclick='removeTrade(${JSON.stringify(keys)})'>Remove</button>
         </div>`;
       })
       .join("");
-  }
-
-  // ── Pick clock ────────────────────────────────────────────────────────────
-  // The clock lives in draft_config, so pausing here pauses it for everyone
-  // watching the public board too — and it survives a reload.
-  function pickClockPaused() {
-    return Boolean((currentConfig && currentConfig.clock_state && currentConfig.clock_state.pausedAt) || false);
-  }
-
-  function renderClockControls() {
-    const btn = document.getElementById("clock-toggle");
-    if (!btn) return;
-    btn.textContent = pickClockPaused() ? "Resume Clock" : "Pause Clock";
-  }
-
-  async function togglePickClock() {
-    const status = document.getElementById("pick-status");
-    const action = pickClockPaused() ? "resume" : "pause";
-    try {
-      const result = await callAdminApi("/api/clock/set", { action });
-      // Apply locally so the button flips immediately rather than waiting for
-      // the realtime round-trip.
-      if (currentConfig) currentConfig.clock_state = result.clockState || {};
-      renderClockControls();
-      refreshBoard();
-      status.textContent = action === "pause" ? "Clock paused." : "Clock resumed.";
-      status.className = "status-msg ok";
-    } catch (e) {
-      status.textContent = "Error: " + e.message;
-      status.className = "status-msg err";
-    }
-  }
-
-  async function resetPickClock() {
-    const status = document.getElementById("pick-status");
-    const pauseAfter = document.getElementById("clock-pause-after").checked;
-    try {
-      const result = await callAdminApi("/api/clock/set", { action: "reset", pauseAfter });
-      if (currentConfig) currentConfig.clock_state = result.clockState || {};
-      renderClockControls();
-      refreshBoard();
-      const minutes = PICK_CLOCK_SECONDS / 60;
-      status.textContent = pauseAfter
-        ? `Clock reset to ${minutes} minutes and paused — press Resume Clock to start it.`
-        : `Clock reset — a full ${minutes} minutes back on the board.`;
-      status.className = "status-msg ok";
-    } catch (e) {
-      status.textContent = "Error: " + e.message;
-      status.className = "status-msg err";
-    }
-  }
-
-  async function undoLastPick() {
-    const status = document.getElementById("pick-status");
-    try {
-      const result = await callAdminApi("/api/picks/undo", {});
-      // Step the form back onto the pick that was just removed, so undo-and-
-      // retype is the fix-a-mistake flow it looks like.
-      if (result.removed) goToPick(result.removed.overall_pick);
-      status.textContent = result.removed ? `Removed pick #${result.removed.overall_pick}.` : "No picks to remove.";
-      status.className = "status-msg ok";
-    } catch (e) {
-      status.textContent = "Error: " + e.message;
-      status.className = "status-msg err";
-    }
-  }
-
-  // Our roster slots, mapped to the raw NFL positions balldontlie stores in
-  // nfl_players. Kickers come across as "PK" (K is listed too in case a future
-  // sync source uses it); fullbacks are RB-eligible for fantasy purposes.
-  // DEF is deliberately absent — team defenses aren't rows in nfl_players and
-  // are handled by teamDefenseSuggestions() instead.
-  const ROSTER_SLOT_POSITIONS = {
-    QB: ["QB"],
-    RB: ["RB", "FB"],
-    WR: ["WR"],
-    TE: ["TE"],
-    "W/R/T": ["WR", "RB", "FB", "TE"],
-    K: ["PK", "K"]
-  };
-
-  // Every position that can be drafted as an individual player. Used as the
-  // floor on every autocomplete query, so defenders (CB/LB/S/DE/DT), linemen
-  // and special-teamers can never be picked — a defense is drafted as a team,
-  // not as its players. It also filters out the ~8k retired players
-  // balldontlie returns with position "UNK".
-  const DRAFTABLE_POSITIONS = [...new Set(Object.values(ROSTER_SLOT_POSITIONS).flat())];
-
-  // Reverse of the above: a raw nfl_players position → the one Position option
-  // that describes it. W/R/T is skipped because it spans three positions, so
-  // it's never the single right answer for a specific player.
-  const POSITION_TO_SLOT_OPTION = Object.entries(ROSTER_SLOT_POSITIONS).reduce(
-    (acc, [slot, positions]) => {
-      if (slot !== "W/R/T") positions.forEach((p) => { if (!acc[p]) acc[p] = slot; });
-      return acc;
-    },
-    { DEF: "DEF" }
-  );
-
-  // NFL_TEAM_NAMES comes from js/draftboard.js, loaded above — shared with
-  // draft.html so both pages spell out team names the same way.
-
-  // The draftable half of nfl_players — ~2,000 rows — pulled once and held in
-  // memory, indexed for js/player-search.js. Fuzzy matching can't be pushed
-  // into the database (`ilike '%q%'` is exact-substring only, and Postgres
-  // trigram search would mean a migration and an RPC), so the list comes to the
-  // matcher instead. At roughly 60KB a page it's a cheap trade, and it makes
-  // every keystroke after the first search local and instant.
-  let playerIndex = null;
-  let playerIndexPromise = null;
-
-  // PostgREST caps a response at 1,000 rows, so this pages. full_name isn't
-  // unique (two Chris Johnsons, say), so id breaks ties — without a total
-  // order, rows can shift between pages and get fetched twice or never.
-  async function fetchPlayerIndex() {
-    const PAGE_SIZE = 1000;
-    const MAX_PAGES = 25; // a stop on the loop; the real list is ~2 pages
-    const rows = [];
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const from = page * PAGE_SIZE;
-      const { data, error } = await sb
-        .from("nfl_players")
-        .select("full_name, position, team")
-        .in("position", DRAFTABLE_POSITIONS)
-        .order("full_name")
-        .order("id")
-        .range(from, from + PAGE_SIZE - 1);
-      if (error) throw error;
-      rows.push(...(data || []));
-      if (!data || data.length < PAGE_SIZE) break;
-    }
-    return rows.map((p) =>
-      PlayerSearch.indexEntry({ name: p.full_name, position: p.position, nflTeam: p.team })
-    );
-  }
-
-  // Shared by all three autocompletes, and kicked off in initAdmin() so the
-  // list is usually already there by the time anyone types. A failed load isn't
-  // cached — the next keystroke retries it.
-  function loadPlayerIndex() {
-    if (playerIndex) return Promise.resolve(playerIndex);
-    if (!playerIndexPromise) {
-      playerIndexPromise = fetchPlayerIndex()
-        .then((entries) => {
-          playerIndex = entries;
-          return entries;
-        })
-        .catch((e) => {
-          playerIndexPromise = null;
-          throw e;
-        });
-    }
-    return playerIndexPromise;
-  }
-
-  // Three of these exist: one for the pick form, one for keeper entry, one for
-  // the board's inline editor. Each owns its own suggestion list, debounce
-  // timer and in-flight sequence number, so typing in one can never clobber
-  // another's dropdown.
-  function createPlayerAutocomplete({ inputId, dropdownId, positionId, teamId }) {
-    let suggestions = [];
-    let activeIndex = -1;
-    let searchTimer = null;
-    let searchSeq = 0;
-    let selected = null;
-
-    const input = () => document.getElementById(inputId);
-    const dropdown = () => document.getElementById(dropdownId);
-    const filters = () => ({
-      position: document.getElementById(positionId).value,
-      nflTeam: document.getElementById(teamId).value
-    });
-
-    // With a position/team filter on, an empty box is a useful query (browse the
-    // whole filtered list); with no filter it would mean "every NFL player".
-    function queueSearch(delayMs) {
-      clearTimeout(searchTimer);
-      const q = input().value.trim();
-      const { position, nflTeam } = filters();
-      if (q.length < 2 && !position && !nflTeam) {
-        hide();
-        return;
-      }
-      if (delayMs) searchTimer = setTimeout(() => search(q), delayMs);
-      else search(q);
-    }
-
-    async function search(q) {
-      const seq = ++searchSeq;
-      try {
-        const alreadyDrafted = new Set((currentPicks || []).map((p) => (p.player || "").toLowerCase()));
-        const { position, nflTeam } = filters();
-
-        let results;
-        if (position === "DEF") {
-          results = teamDefenseSuggestions(q, nflTeam);
-        } else {
-          const entries = await loadPlayerIndex();
-          if (seq !== searchSeq) return; // a newer search superseded this one; discard the stale load
-
-          // Always constrain to draftable positions, even on "All skill
-          // positions" — individual defenders are never a valid pick. The
-          // index only holds draftable players, so "All" needs no filter.
-          const positions = ROSTER_SLOT_POSITIONS[position];
-          const pool = entries.filter(
-            (p) =>
-              (!positions || positions.includes(p.position)) &&
-              (!nflTeam || p.nflTeam === nflTeam)
-          );
-          results = PlayerSearch.rank(q, pool, 25);
-        }
-
-        if (seq !== searchSeq) return;
-        suggestions = results.filter((p) => !alreadyDrafted.has(p.name.toLowerCase()));
-        activeIndex = -1;
-        render();
-      } catch (e) {
-        if (seq !== searchSeq) return;
-        console.warn("Player autocomplete failed:", e.message);
-        hide();
-      }
-    }
-
-    function render() {
-      const el = dropdown();
-      if (!suggestions.length) {
-        hide();
-        return;
-      }
-      el.innerHTML = suggestions
-        .map(
-          (p, i) => `<div class="search-result${i === activeIndex ? " active" : ""}" data-index="${i}">
-            <span class="search-text">${escapeHtml(p.name)}</span>
-            <span class="search-breadcrumb">${escapeHtml(p.position || "")}${p.nflTeam ? " · " + escapeHtml(p.nflTeam) : ""}</span>
-          </div>`
-        )
-        .join("");
-      el.hidden = false;
-      el.querySelectorAll(".search-result").forEach((node) => {
-        node.addEventListener("click", () => choose(Number(node.dataset.index)));
-      });
-      // The filtered list can be longer than the dropdown is tall — keep the
-      // arrow-key selection visible.
-      const active = el.querySelector(".search-result.active");
-      if (active) active.scrollIntoView({ block: "nearest" });
-    }
-
-    function choose(index) {
-      const p = suggestions[index];
-      if (!p) return;
-      input().value = p.name;
-      selected = p;
-
-      // Mirror the chosen player's own position and NFL team into the dropdowns.
-      // Assigning .value fires no change event, so this can't retrigger the
-      // search whose handler would clear `selected`.
-      const positionSelect = document.getElementById(positionId);
-      const slotOption = POSITION_TO_SLOT_OPTION[p.position] || "";
-      if ([...positionSelect.options].some((o) => o.value === slotOption)) {
-        positionSelect.value = slotOption;
-      }
-      // Free agents come across with no team — fall back to "Any" rather than
-      // leaving whatever was selected before, which would misdescribe the player.
-      document.getElementById(teamId).value =
-        p.nflTeam && NFL_TEAM_NAMES[p.nflTeam] ? p.nflTeam : "";
-
-      hide();
-    }
-
-    function hide() {
-      clearTimeout(searchTimer);
-      searchSeq++; // invalidate any in-flight search() so it can't reopen this dropdown
-      suggestions = [];
-      activeIndex = -1;
-      const el = dropdown();
-      el.hidden = true;
-      el.innerHTML = "";
-    }
-
-    // Matching is local once the player list is in memory, so there's no
-    // network call to debounce — the delay is only there to keep a fast typist
-    // from re-ranking the list on every keystroke.
-    input().addEventListener("input", () => {
-      selected = null;
-      queueSearch(60);
-    });
-
-    // Changing a filter re-runs the current search so the list narrows in place.
-    [positionId, teamId].forEach((id) => {
-      document.getElementById(id).addEventListener("change", () => {
-        selected = null;
-        queueSearch(0);
-      });
-    });
-
-    input().addEventListener("keydown", (e) => {
-      if (dropdown().hidden) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        activeIndex = Math.min(activeIndex + 1, suggestions.length - 1);
-        render();
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        activeIndex = Math.max(activeIndex - 1, -1);
-        render();
-      } else if (e.key === "Enter" && activeIndex >= 0) {
-        e.preventDefault();
-        choose(activeIndex);
-      } else if (e.key === "Escape") {
-        hide();
-      }
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!input().contains(e.target) && !dropdown().contains(e.target)) hide();
-    });
-
-    return {
-      get selected() { return selected; },
-      set selected(v) { selected = v; },
-      hide,
-      reset() {
-        input().value = "";
-        document.getElementById(positionId).value = "";
-        document.getElementById(teamId).value = "";
-        selected = null;
-        hide();
-      }
-    };
-  }
-
-  let pickAutocomplete = null;
-  let keeperAutocomplete = null;
-  let inlineAutocomplete = null;
-
-  function wirePlayerAutocomplete() {
-    if (pickAutocomplete) return;
-    pickAutocomplete = createPlayerAutocomplete({
-      inputId: "pick-player", dropdownId: "player-suggestions",
-      positionId: "pick-position", teamId: "pick-nflteam"
-    });
-    keeperAutocomplete = createPlayerAutocomplete({
-      inputId: "keeper-player", dropdownId: "keeper-suggestions",
-      positionId: "keeper-position", teamId: "keeper-nflteam"
-    });
-    // The board's inline editor. Its elements live outside #board precisely so
-    // these listeners survive every renderBoard() call.
-    inlineAutocomplete = createPlayerAutocomplete({
-      inputId: "inline-player", dropdownId: "inline-suggestions",
-      positionId: "inline-position", teamId: "inline-nflteam"
-    });
-  }
-
-  // The NFL is a fixed 32 teams and Position is a fixed list of our roster
-  // slots, so both dropdowns are built from constants rather than discovered by
-  // paging the 13k-row nfl_players table. Values stay abbreviations (what the
-  // `team` column holds); labels are the full names.
-  function loadPlayerFilterOptions() {
-    const options =
-      `<option value="">Any NFL team</option>` +
-      Object.entries(NFL_TEAM_NAMES)
-        .sort((a, b) => a[1].localeCompare(b[1]))
-        .map(([abbr, name]) => `<option value="${escapeHtml(abbr)}">${escapeHtml(name)}</option>`)
-        .join("");
-    ["pick-nflteam", "keeper-nflteam", "inline-nflteam"].forEach((id) => {
-      const select = document.getElementById(id);
-      const previous = select.value;
-      select.innerHTML = options;
-      if (NFL_TEAM_NAMES[previous]) select.value = previous;
-    });
-  }
-
-  // The 32 team defenses, drafted by full team name rather than as individual
-  // defenders. Not backed by nfl_players, so this is matched in memory — by the
-  // same fuzzy rules as players, plus each team's abbreviation as an alias, so
-  // "sf" finds the 49ers.
-  let defenseIndex = null;
-
-  function teamDefenseSuggestions(q, nflTeam) {
-    if (!defenseIndex) {
-      defenseIndex = Object.entries(NFL_TEAM_NAMES).map(([abbr, name]) =>
-        PlayerSearch.indexEntry({ name, position: "DEF", nflTeam: abbr }, abbr)
-      );
-    }
-    const pool = nflTeam ? defenseIndex.filter((d) => d.nflTeam === nflTeam) : defenseIndex;
-    return PlayerSearch.rank(q, pool, 25);
-  }
-
-  // Stay logged in across reloads: if a password is already cached from a
-  // prior visit, skip the gate entirely (same trust model as checkPassword —
-  // the server is still the real check on every write). Otherwise put the
-  // cursor straight in the password field.
-  if (localStorage.getItem("hmc_admin_password")) {
-    document.getElementById("gate").style.display = "none";
-    document.getElementById("admin-content").style.display = "block";
-    initAdmin();
-  } else {
-    document.getElementById("gate-password").focus();
   }
 </script>
 </body>

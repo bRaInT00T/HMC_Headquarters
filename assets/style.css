@@ -9,6 +9,21 @@
   --accent-2: #6fae8f;
   --danger: #d16060;
   --radius: 10px;
+  /* Draft board position colours. These are the defaults; the commissioner can
+     override any of them from admin.html, which stores the palette on
+     draft_config.position_colors and re-sets these same properties on <html>
+     at runtime (js/draftboard.js:applyPositionColors). js/draftboard.js also
+     reads them back off :root for the admin colour pickers' Reset — so this
+     block is the one place the shipped palette is written down. */
+  --pos-color-qb: #e08b3a;  /* orange */
+  --pos-color-rb: #55a86a;  /* green */
+  --pos-color-wr: #4b8fd8;  /* blue */
+  --pos-color-te: #d55b52;  /* red */
+  --pos-color-k: #9b7ad6;   /* purple */
+  --pos-color-def: #8b909c; /* grey */
+  /* Picks whose position doesn't fold into one of the six groups. Not
+     configurable — it's the absence of a colour, not a colour. */
+  --pos-color-none: #5a6172;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
@@ -767,7 +782,128 @@ table.board td.round-label {
   background: var(--bg-panel);
 }
 table.board td.pick-cell { min-width: 130px; }
-.pick-cell.filled { background: #1a1e1a; }
+
+/* .pos-* marks something as belonging to a position group — a filled board cell
+   or a legend entry — and does nothing but name that group's colour. Kept off
+   .pick-cell deliberately so the legend can reuse it, and so --pos-fill below
+   can fall back for cells with no group without a specificity fight. */
+.pos-qb  { --pos-color: var(--pos-color-qb); }
+.pos-rb  { --pos-color: var(--pos-color-rb); }
+.pos-wr  { --pos-color: var(--pos-color-wr); }
+.pos-te  { --pos-color: var(--pos-color-te); }
+.pos-k   { --pos-color: var(--pos-color-k); }
+.pos-def { --pos-color: var(--pos-color-def); }
+
+/* Every filled cell is tinted and striped by the drafted player's position, so
+   a column of picks reads as a shape at a glance. --pos-fill resolves to the
+   group's colour when .pos-* set one and to the neutral otherwise, which is why
+   nothing below needs a per-position rule.
+   The stripe is an inset shadow, not a border: table.board is
+   border-collapse: collapse, where a thicker border-left on one cell would
+   fight its neighbour's border-right, and in the list view it would shift the
+   row's text 3px out of line with the unfilled rows above and below. */
+.pick-cell.filled {
+  --pos-fill: var(--pos-color, var(--pos-color-none));
+  background: color-mix(in srgb, var(--pos-fill) 16%, var(--bg-panel));
+  box-shadow: inset 3px 0 0 var(--pos-fill);
+}
+
+/* The position abbreviation itself, carrying the cell's colour at full
+   strength — the tint alone is deliberately faint behind body text, so this is
+   what keeps the code readable where the legend has scrolled away. */
+.pick-cell .pos-tag {
+  color: var(--pos-fill, var(--text-dim));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* The key to the colour coding. Sits inside .board-wrap (so full screen keeps
+   it) and pins to the left edge, since the grid scrolls sideways under it. */
+.pos-legend {
+  position: sticky;
+  left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  width: max-content;
+  max-width: 100%;
+}
+.pos-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--pos-color, var(--text-dim));
+}
+.pos-legend-item .meta {
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-dim);
+}
+.pos-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--pos-color, var(--pos-color-none));
+}
+@media (max-width: 640px) {
+  /* Long-form labels are the first thing to go when the row would wrap into a
+     block of its own — the abbreviation and its swatch still carry the code. */
+  .pos-legend-item .meta { display: none; }
+}
+
+/* Admin only: the per-position colour pickers. Each row wears its own .pos-*
+   class, so the label is tinted by whatever the picker currently holds. */
+.position-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.position-color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--pos-color) 12%, var(--bg-panel));
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--pos-color);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.position-color-row input[type="color"] {
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.position-color-name {
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--pos-color);
+}
+/* The abbreviations this colour covers, pushed to the right of the row. */
+.position-color-row .meta {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.position-colors + .full-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .pick-cell .player { font-weight: 600; }
 /* Capped to the grid column's own min-width so a spelled-out NFL team wraps
    inside the cell rather than pushing its column wider than the rest. */
@@ -780,7 +916,6 @@ table.board td.pick-cell .meta { max-width: 130px; }
 /* Admin only — recorded picks on the commissioner's preview board load back into
    the entry form when clicked. The public board never gets this class. */
 .pick-cell.clickable { cursor: pointer; }
-.pick-cell.clickable:hover { background: #232a23; }
 .pick-cell.clickable:focus-visible {
   outline: 2px solid var(--accent-2);
   outline-offset: -2px;
@@ -794,12 +929,22 @@ table.board td.pick-cell .meta { max-width: 130px; }
 }
 
 /* Keepers are recorded before draft day, so they read as settled rather than
-   as something that just happened live. */
-.pick-cell.filled.keeper { background: #1a1a22; }
-/* .clickable:hover and .filled.keeper are the same specificity (0,4,2) and
-   .filled.keeper is declared later, so it would otherwise win the tie and
-   keeper cells would never show hover feedback. */
-.pick-cell.clickable.keeper:hover { background: #26263a; }
+   as something that just happened live — same position colour, held back to a
+   whisper of tint and a dimmer stripe. */
+.pick-cell.filled.keeper {
+  background: color-mix(in srgb, var(--pos-fill) 8%, var(--bg-panel));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--pos-fill) 55%, var(--bg-panel));
+}
+
+/* Hover feedback for the admin board's clickable picks (only filled cells ever
+   get .clickable). Declared after the .filled and .keeper backgrounds so it
+   wins the specificity tie against them and hover is actually visible. */
+.pick-cell.filled.clickable:hover {
+  background: color-mix(in srgb, var(--pos-fill) 30%, var(--bg-panel));
+}
+.pick-cell.filled.keeper.clickable:hover {
+  background: color-mix(in srgb, var(--pos-fill) 20%, var(--bg-panel));
+}
 .keeper-tag {
   color: var(--accent-2);
   font-weight: 700;
@@ -1017,6 +1162,19 @@ form.pick-form .trade-leg {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* Marks a trade the commissioner pushed through against the league rules. */
+.traded-row .override-flag {
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .traded-row button {
   background: none;
   border: 1px solid var(--border);
@@ -1060,6 +1218,8 @@ form.pick-form .trade-leg {
 .status-msg { font-size: 0.85rem; margin-top: 8px; }
 .status-msg.ok { color: var(--accent-2); }
 .status-msg.err { color: var(--danger); }
+/* Saved, but not by the book — a commissioner override went through. */
+.status-msg.warn { color: var(--accent); }
 
 .gate {
   max-width: 380px;
@@ -1377,3 +1537,123 @@ footer.site-footer {
 /* .btn sets display:inline-block, which outranks the browser's own
    [hidden] { display: none } — without this a hidden button stays visible. */
 .btn[hidden] { display: none; }
+
+/* ── Right-gutter table of contents (js/page-toc.js) ──────────────────────
+   Used by the two commissioner pages, which are long enough that the section
+   you want is usually off-screen. `main.with-toc` gives the panel a column of
+   its own; below 1100px it folds back above the content, collapsed. */
+main.with-toc {
+  max-width: 1280px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 236px;
+  gap: 28px;
+  align-items: start;
+}
+/* The login gate is the whole page until it's cleared. */
+main.with-toc > .gate { grid-column: 1 / -1; }
+
+.page-toc {
+  position: sticky;
+  top: 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 0.85rem;
+}
+.page-toc[hidden] { display: none; }
+
+.toc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.page-toc.collapsed .toc-head { margin: 0; }
+.toc-title {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.toc-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  /* Its own scroller, so a long list never runs past the viewport and
+     scrollRowIntoView() has something to scroll. */
+  max-height: calc(100vh - 130px);
+  overflow-y: auto;
+}
+.toc-list[hidden] { display: none; }
+.toc-sub {
+  list-style: none;
+  margin: 2px 0 4px;
+  padding-left: 22px;
+}
+.toc-sub[hidden] { display: none; }
+
+.toc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.toc-twisty {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  line-height: 22px;
+  cursor: pointer;
+}
+.toc-twisty:hover { color: var(--text); }
+.toc-twisty-empty { cursor: default; }
+
+.toc-item a {
+  display: block;
+  flex: 1 1 auto;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  border-left: 2px solid transparent;
+}
+.toc-item a:hover {
+  color: var(--text);
+  background: var(--bg-panel-2);
+  text-decoration: none;
+}
+.toc-item.active > .toc-row > a,
+.toc-item.toc-item-sub.active > a {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--bg-panel-2);
+}
+.toc-item-sub a { font-size: 0.8rem; }
+
+/* Anchored sections clear the sticky panel's top edge rather than landing
+   flush against the viewport. */
+main.with-toc section[id],
+main.with-toc h3[id] { scroll-margin-top: 16px; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+@media (max-width: 1100px) {
+  /* Still a grid, so `order` below is honoured — the panel is last in the DOM
+     (it describes the content) but belongs above it once it's full width. */
+  main.with-toc { grid-template-columns: minmax(0, 1fr); }
+  .page-toc {
+    position: static;
+    order: -1;
+  }
+  .toc-list { max-height: 50vh; }
+}

@@ -25,6 +25,124 @@ function nflTeamName(abbr) {
   return NFL_TEAM_NAMES[key] || abbr || "";
 }
 
+// ── Position colour coding ──────────────────────────────────────────────────
+// Filled cells are tinted by the drafted player's position, and the legend below
+// the toolbar spells the code out. This list is the single source of truth for
+// the six groups: their order on the legend, the labels, and which raw position
+// strings fold into each one.
+//
+// `covers` matters because the stored position comes from three sources that
+// don't agree on spelling — Yahoo ("PK", "D/ST"), the nfl_players sync ("K",
+// "DEF") and hand entry — and all of them have to land on the same colour.
+// FB rides with RB. Anything unrecognised gets no group and keeps the neutral
+// filled cell rather than borrowing another position's colour.
+const POSITION_GROUPS = [
+  { id: "qb", label: "Quarterback", covers: ["QB"] },
+  { id: "rb", label: "Running Back", covers: ["RB", "FB"] },
+  { id: "wr", label: "Wide Receiver", covers: ["WR"] },
+  { id: "te", label: "Tight End", covers: ["TE"] },
+  { id: "k", label: "Kicker", covers: ["K", "PK"] },
+  { id: "def", label: "Defense", covers: ["DEF", "D/ST", "DST"] }
+];
+
+const POSITION_GROUP_IDS = POSITION_GROUPS.map((g) => g.id);
+
+// Flattened { "QB": "qb", "PK": "k", … } lookup, built from `covers` so the
+// list above stays the only place a position-to-colour decision is written down.
+const POSITION_GROUP_BY_ABBR = {};
+POSITION_GROUPS.forEach((g) => {
+  g.covers.forEach((abbr) => {
+    POSITION_GROUP_BY_ABBR[abbr] = g.id;
+  });
+});
+
+function positionGroup(position) {
+  const key = String(position || "").toUpperCase().trim();
+  if (!key) return "";
+  if (POSITION_GROUP_BY_ABBR[key]) return POSITION_GROUP_BY_ABBR[key];
+  // "DEF - Buffalo", "DEF/ST" and the like.
+  if (key.startsWith("DEF") || key.startsWith("D/ST")) return "def";
+  return "";
+}
+
+// The position line inside a filled cell, coloured to match the cell's tint so
+// the code reads even where the legend is off-screen.
+function positionTagHtml(position) {
+  if (!position) return "";
+  return `<span class="pos-tag">${escapeHtml(position)}</span>`;
+}
+
+// Colours are CSS custom properties (--pos-color-qb …) rather than values baked
+// into the markup: one property set on <html> recolours every cell, the legend
+// and the admin swatches at once, with no re-render.
+const POSITION_COLOR_VAR = (groupId) => `--pos-color-${groupId}`;
+
+// Anything written into a style property has to be checked first — these values
+// arrive from draft_config, and a custom property is a CSS injection vector.
+// Six hex digits only; that's also exactly what <input type="color"> produces.
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+function isValidPositionColor(value) {
+  return typeof value === "string" && HEX_COLOR_RE.test(value.trim());
+}
+
+// The palette the stylesheet ships with, read back off :root once so the
+// defaults live in exactly one place (assets/style.css) instead of being
+// duplicated here for the admin page's colour pickers and its Reset button.
+// Captured before any override is applied, so it survives one being set.
+let defaultPositionColorCache = null;
+
+function defaultPositionColors() {
+  if (!defaultPositionColorCache) {
+    const rootStyles = getComputedStyle(document.documentElement);
+    defaultPositionColorCache = {};
+    POSITION_GROUPS.forEach((g) => {
+      const value = rootStyles.getPropertyValue(POSITION_COLOR_VAR(g.id)).trim();
+      defaultPositionColorCache[g.id] = isValidPositionColor(value) ? value : "#5a6172";
+    });
+  }
+  return { ...defaultPositionColorCache };
+}
+
+// Merges the league's saved overrides over the stylesheet defaults. Unknown keys
+// and malformed values are dropped rather than trusted — an un-migrated project
+// sends {} here and gets the defaults, which is the intended fallback.
+function resolvePositionColors(saved) {
+  const colors = defaultPositionColors();
+  Object.entries(saved || {}).forEach(([id, value]) => {
+    if (POSITION_GROUP_IDS.includes(id) && isValidPositionColor(value)) {
+      colors[id] = value.trim().toLowerCase();
+    }
+  });
+  return colors;
+}
+
+// Pushes the resolved palette onto <html>, where every --pos-color-* reference
+// on the page picks it up. Passing nothing clears the overrides back to the
+// stylesheet's own values.
+function applyPositionColors(saved) {
+  defaultPositionColors(); // snapshot the stylesheet values before overriding them
+  const root = document.documentElement;
+  const colors = resolvePositionColors(saved);
+  POSITION_GROUPS.forEach((g) => {
+    root.style.setProperty(POSITION_COLOR_VAR(g.id), colors[g.id]);
+  });
+  return colors;
+}
+
+// The key to the colour coding, rendered from the same list the cells use so the
+// two can't drift. Lives inside .board-wrap so it comes along into full screen.
+function renderPositionLegend(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = POSITION_GROUPS.map(
+    (g) => `<span class="pos-legend-item pos-${g.id}">
+      <span class="pos-swatch" aria-hidden="true"></span>${escapeHtml(g.covers[0])}
+      <span class="meta">${escapeHtml(g.label)}</span>
+    </span>`
+  ).join("");
+}
+
 function slotForOverallPick(overallPick, numTeams) {
   const round = Math.ceil(overallPick / numTeams);
   const posInRound = ((overallPick - 1) % numTeams) + 1;
@@ -180,9 +298,10 @@ function renderGridHtml({ config, numTeams, rounds, tradedPicks, ownerBySlot, pi
         // Marks the cell the entry form is pointed at, so it's visible which pick
         // a save would overwrite.
         const editing = opts.editingOverall === overall ? " editing" : "";
-        html += `<td class="pick-cell filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
+        const posGroup = positionGroup(pick.position);
+        html += `<td class="pick-cell filled${posGroup ? ` pos-${posGroup}` : ""}${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
           <div class="player">${escapeHtml(pick.player || "")}</div>
-          <div class="meta">${escapeHtml(pick.position || "")}</div>
+          <div class="meta">${positionTagHtml(pick.position)}</div>
           ${pick.nfl_team ? `<div class="meta">${escapeHtml(nflTeamName(pick.nfl_team))}</div>` : ""}
           ${viaHtml}
           <div class="meta">${isKeeper ? '<span class="keeper-tag">Keeper</span> · ' : ""}Pick #${overall}${pick.source === "yahoo" ? " · synced" : ""}</div>
@@ -225,12 +344,13 @@ function renderListHtml({ config, numTeams, rounds, tradedPicks, ownerBySlot, pi
       const clickable = Boolean(opts.onPickClick);
       const clickAttrs = clickable ? ` data-overall="${overall}" role="button" tabindex="0"` : "";
       const editing = opts.editingOverall === overall ? " editing" : "";
-      html += `<div class="pick-cell list-row filled${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
+      const posGroup = positionGroup(pick.position);
+      html += `<div class="pick-cell list-row filled${posGroup ? ` pos-${posGroup}` : ""}${isKeeper ? " keeper" : ""}${clickable ? " clickable" : ""}${editing}"${clickAttrs}>
         ${numHtml}
         ${teamHtml}
         <div class="list-player">
           <div class="player">${escapeHtml(pick.player || "")}</div>
-          <div class="meta">${escapeHtml(pick.position || "")}${pick.nfl_team ? " · " + escapeHtml(nflTeamName(pick.nfl_team)) : ""}</div>
+          <div class="meta">${positionTagHtml(pick.position)}${pick.position && pick.nfl_team ? " · " : ""}${pick.nfl_team ? escapeHtml(nflTeamName(pick.nfl_team)) : ""}</div>
           ${viaHtml}
         </div>
         <div class="list-tag">${isKeeper ? '<span class="keeper-tag">Keeper</span>' : ""}${pick.source === "yahoo" ? '<span class="meta">synced</span>' : ""}</div>
